@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 주식 분석 시뮬레이터</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background: #f4f7f9; margin: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        input, button { padding: 10px; border-radius: 6px; border: 1px solid #ccc; }
+        button { background: #007bff; color: white; cursor: pointer; border: none; }
+        #chart-container { position: relative; height: 50vh; width: 100%; }
+        .analysis-box { margin-top: 20px; padding: 15px; border-left: 5px solid #007bff; background: #eef6ff; }
+        .trade-log { margin-top: 10px; font-size: 0.9em; line-height: 1.6; }
+        .buy { color: red; font-weight: bold; }
+        .sell { color: blue; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📊 주식 분석 & 자동 매매 시뮬레이션</h2>
+    
+    <div class="controls">
+        <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" value="005930">
+        <input type="number" id="period" placeholder="분석 기간(일)" value="30">
+        <button onclick="analyzeStock()">분석 실행</button>
+    </div>
+
+    <div id="chart-container">
+        <canvas id="stockChart"></canvas>
+    </div>
+
+    <div id="analysisResult" class="analysis-box" style="display:none;">
+        <h3>🧐 분석 결과 및 매매 전략</h3>
+        <p id="summaryText"></p>
+        <hr>
+        <div id="tradeLog" class="trade-log"></div>
+    </div>
+</div>
+
+<script>
+let myChart = null;
+
+function analyzeStock() {
+    const code = document.getElementById('stockCode').value;
+    const period = parseInt(document.getElementById('period').value);
+    
+    // 1. 가상 데이터 생성 (실제 환경에서는 API 호출 필요)
+    const data = generateMockData(period);
+    
+    // 2. 상한가/하한가 및 지지/저항선 계산
+    const highPrice = Math.max(...data.prices);
+    const lowPrice = Math.min(...data.prices);
+    
+    // 3. 차트 그리기
+    renderChart(data, highPrice, lowPrice);
+    
+    // 4. 매매 시뮬레이션 및 설명 생성
+    generateAnalysis(data, highPrice, lowPrice);
+}
+
+function generateMockData(days) {
+    let prices = [];
+    let labels = [];
+    let basePrice = 70000;
+    
+    for (let i = 0; i < days; i++) {
+        basePrice += (Math.random() - 0.5) * 2000;
+        prices.push(Math.floor(basePrice));
+        labels.push(`${i+1}일차`);
+    }
+    return { prices, labels };
+}
+
+function renderChart(data, high, low) {
+    const ctx = document.getElementById('stockChart').getContext('2d');
+    
+    if (myChart) myChart.destroy();
+    
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: '주가',
+                data: data.prices,
+                borderColor: '#333',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                autocolors: false,
+                annotation: { // 수평선 추가 로직 (간소화)
+                }
+            }
+        }
+    });
+}
+
+function generateAnalysis(data, high, low) {
+    const resultDiv = document.getElementById('analysisResult');
+    const summary = document.getElementById('summaryText');
+    const log = document.getElementById('tradeLog');
+    
+    resultDiv.style.display = 'block';
+    
+    // 분석 설명
+    summary.innerHTML = `현재 분석 기간 내 <b>최고가(저항선)는 ${high.toLocaleString()}원</b>이며, 
+    <b>최저가(지지선)는 ${low.toLocaleString()}원</b>입니다. <br>
+    현재 주가는 전반적으로 ${data.prices[0] < data.prices[data.prices.length-1] ? '상승' : '하락'} 추세에 있습니다.`;
+
+    // 매매 시뮬레이션 (단순 골든크로스/데드크로스 개념 적용)
+    let logHtml = "<b>[매매 시뮬레이션 리포트]</b><br>";
+    let holding = false;
+    
+    for(let i = 1; i < data.prices.length; i++) {
+        // 간단한 로직: 저점 대비 2% 반등시 매수, 고점 대비 2% 하락시 매도
+        if(!holding && data.prices[i] < low * 1.05) {
+            logHtml += `<span class="buy">● ${i+1}일차 매수:</span> ${data.prices[i].toLocaleString()}원 (바닥권 진입)<br>`;
+            holding = true;
+        } else if(holding && data.prices[i] > high * 0.95) {
+            logHtml += `<span class="sell">○ ${i+1}일차 매도:</span> ${data.prices[i].toLocaleString()}원 (목표가 도달 수익실현)<br>`;
+            holding = false;
+        }
+    }
+    log.innerHTML = logHtml;
+}
+</script>
+
+</body>
+</html>

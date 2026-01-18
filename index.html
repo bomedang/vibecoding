@@ -97,9 +97,33 @@ const YTRhythmGame = () => {
   };
 
   const extractVideoId = (url) => {
-    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[7].length === 11) ? match[7] : null;
+    // YouTube URL에서 v 파라미터 추출
+    const urlParams = new URLSearchParams(url.split('?')[1]);
+    const vParam = urlParams.get('v');
+    
+    if (vParam && vParam.length === 11) {
+      return vParam;
+    }
+    
+    // youtu.be 형식
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (shortMatch) {
+      return shortMatch[1];
+    }
+    
+    // embed 형식
+    const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+    if (embedMatch) {
+      return embedMatch[1];
+    }
+    
+    // v/ 형식
+    const vMatch = url.match(/youtube\.com\/v\/([a-zA-Z0-9_-]{11})/);
+    if (vMatch) {
+      return vMatch[1];
+    }
+    
+    return null;
   };
 
   const analyzeBeat = async (videoId) => {
@@ -160,31 +184,73 @@ const YTRhythmGame = () => {
     setGameState('playing');
     startTimeRef.current = null;
     
-    if (window.YT && window.YT.Player) {
-      setTimeout(() => {
-        if (playerRef.current) {
-          playerRef.current.destroy();
-        }
-        playerRef.current = new window.YT.Player('youtube-player', {
-          videoId: song.videoId,
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            modestbranding: 1
-          },
-          events: {
-            onReady: (e) => e.target.playVideo(),
-            onStateChange: (e) => {
-              if (e.data === window.YT.PlayerState.PLAYING && !startTimeRef.current) {
-                startTimeRef.current = Date.now();
-                gameLoop();
-              }
-            }
+    const initPlayer = () => {
+      if (window.YT && window.YT.Player) {
+        setTimeout(() => {
+          if (playerRef.current) {
+            playerRef.current.destroy();
           }
-        });
-      }, 100);
+          
+          const playerElement = document.getElementById('youtube-player');
+          if (!playerElement) {
+            console.error('Player element not found');
+            startTimeRef.current = Date.now();
+            gameLoop();
+            return;
+          }
+          
+          try {
+            playerRef.current = new window.YT.Player('youtube-player', {
+              height: '100%',
+              width: '100%',
+              videoId: song.videoId,
+              playerVars: {
+                autoplay: 1,
+                controls: 0,
+                disablekb: 1,
+                fs: 0,
+                modestbranding: 1,
+                rel: 0
+              },
+              events: {
+                onReady: (e) => {
+                  e.target.playVideo();
+                },
+                onStateChange: (e) => {
+                  if (e.data === window.YT.PlayerState.PLAYING && !startTimeRef.current) {
+                    startTimeRef.current = Date.now();
+                    gameLoop();
+                  }
+                },
+                onError: () => {
+                  console.error('YouTube player error');
+                  if (!startTimeRef.current) {
+                    startTimeRef.current = Date.now();
+                    gameLoop();
+                  }
+                }
+              }
+            });
+          } catch (error) {
+            console.error('Failed to create player:', error);
+            startTimeRef.current = Date.now();
+            gameLoop();
+          }
+        }, 300);
+      } else {
+        console.log('YouTube API not ready, starting game anyway');
+        setTimeout(() => {
+          startTimeRef.current = Date.now();
+          gameLoop();
+        }, 500);
+      }
+    };
+    
+    if (!window.YT) {
+      window.onYouTubeIframeAPIReady = initPlayer;
+      loadYouTubeAPI();
+    } else {
+      initPlayer();
     }
   };
 
@@ -274,7 +340,7 @@ const YTRhythmGame = () => {
   };
 
   useEffect(() => {
-    if (gameState === 'playing' && notes.length === 0) {
+    if (gameState === 'playing' && notes.length === 0 && startTimeRef.current) {
       setTimeout(endGame, 2000);
     }
   }, [notes, gameState]);

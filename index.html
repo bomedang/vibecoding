@@ -3,29 +3,25 @@ import { Music, Play, Upload, Users, Trophy, LogOut, Home } from 'lucide-react';
 
 const YTRhythmGame = () => {
   const [user, setUser] = useState(null);
-  const [page, setPage] = useState('home'); // home, game, community
+  const [page, setPage] = useState('home');
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
-  const [gameState, setGameState] = useState('idle'); // idle, playing, ended
+  const [gameState, setGameState] = useState('idle');
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [notes, setNotes] = useState([]);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  const gameRef = useRef(null);
-  const audioContextRef = useRef(null);
   const animationRef = useRef(null);
   const startTimeRef = useRef(null);
   const playerRef = useRef(null);
 
-  // 스토리지 키
   const STORAGE_KEYS = {
     USER: 'rhythm-game-user',
     SONGS: 'rhythm-game-songs'
   };
 
-  // 초기 로드
   useEffect(() => {
     loadUser();
     loadSongs();
@@ -73,7 +69,6 @@ const YTRhythmGame = () => {
     }
   };
 
-  // 구글 로그인 시뮬레이션 (실제로는 Firebase 사용)
   const handleGoogleLogin = async () => {
     const mockUser = {
       id: `user_${Date.now()}`,
@@ -101,27 +96,21 @@ const YTRhythmGame = () => {
     }
   };
 
-  // YouTube URL에서 비디오 ID 추출
   const extractVideoId = (url) => {
     const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[7].length === 11) ? match[7] : null;
   };
 
-  // 비트 감지 알고리즘 (간단한 버전)
   const analyzeBeat = async (videoId) => {
     setIsAnalyzing(true);
-    
-    // 실제로는 Web Audio API를 사용하여 오디오 분석
-    // 여기서는 시뮬레이션된 비트 데이터 생성
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     const generatedNotes = [];
-    const duration = 120; // 2분 곡 가정
-    const bpm = 120 + Math.random() * 60; // 120-180 BPM
+    const duration = 120;
+    const bpm = 120 + Math.random() * 60;
     const beatInterval = 60 / bpm;
     
-    // 4개 레인에 노트 생성
     for (let time = 2; time < duration; time += beatInterval) {
       const lane = Math.floor(Math.random() * 4);
       generatedNotes.push({
@@ -135,7 +124,6 @@ const YTRhythmGame = () => {
     return generatedNotes;
   };
 
-  // 노래 업로드
   const handleUploadSong = async () => {
     if (!youtubeUrl.trim()) return;
     
@@ -164,7 +152,6 @@ const YTRhythmGame = () => {
     setPage('community');
   };
 
-  // 게임 시작
   const startGame = (song) => {
     setCurrentSong(song);
     setNotes(JSON.parse(JSON.stringify(song.notes)));
@@ -173,7 +160,6 @@ const YTRhythmGame = () => {
     setGameState('playing');
     startTimeRef.current = null;
     
-    // YouTube Player 생성
     if (window.YT && window.YT.Player) {
       setTimeout(() => {
         if (playerRef.current) {
@@ -202,7 +188,6 @@ const YTRhythmGame = () => {
     }
   };
 
-  // 게임 루프
   const gameLoop = () => {
     if (gameState !== 'playing') return;
     
@@ -214,7 +199,6 @@ const YTRhythmGame = () => {
         position: ((currentTime - note.time) / 2) * 100 + 100
       }));
       
-      // 화면 밖으로 나간 노트 제거 (미스 처리)
       return updated.filter(note => {
         if (note.position > 110 && !note.hit) {
           setCombo(0);
@@ -227,7 +211,6 @@ const YTRhythmGame = () => {
     animationRef.current = requestAnimationFrame(gameLoop);
   };
 
-  // 키 입력 처리
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (gameState !== 'playing') return;
@@ -249,9 +232,9 @@ const YTRhythmGame = () => {
             const accuracy = Math.abs(currentTime - hitNote.time);
             let points = 0;
             
-            if (accuracy < 0.05) points = 300; // Perfect
-            else if (accuracy < 0.1) points = 100; // Good
-            else points = 50; // OK
+            if (accuracy < 0.05) points = 300;
+            else if (accuracy < 0.1) points = 100;
+            else points = 50;
             
             setScore(s => s + points * (combo + 1));
             setCombo(c => c + 1);
@@ -272,7 +255,6 @@ const YTRhythmGame = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameState, combo]);
 
-  // 게임 종료
   const endGame = () => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -283,7 +265,6 @@ const YTRhythmGame = () => {
     }
     setGameState('ended');
     
-    // 최고 점수 업데이트
     if (score > currentSong.bestScore) {
       const updatedSongs = songs.map(s => 
         s.id === currentSong.id ? { ...s, bestScore: score, plays: s.plays + 1 } : s
@@ -298,7 +279,6 @@ const YTRhythmGame = () => {
     }
   }, [notes, gameState]);
 
-  // 로그인 화면
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -330,18 +310,14 @@ const YTRhythmGame = () => {
     );
   }
 
-  // 게임 화면
   if (gameState === 'playing' || gameState === 'ended') {
     return (
       <div className="min-h-screen bg-black relative overflow-hidden">
-        {/* YouTube Player */}
         <div className="absolute inset-0 opacity-30">
           <div id="youtube-player" className="w-full h-full"></div>
         </div>
         
-        {/* 게임 영역 */}
         <div className="relative z-10 h-screen flex flex-col">
-          {/* 상단 UI */}
           <div className="p-4 bg-gradient-to-b from-black/80 to-transparent">
             <div className="flex justify-between items-center text-white">
               <div>
@@ -357,15 +333,12 @@ const YTRhythmGame = () => {
             </div>
           </div>
           
-          {/* 게임 레인 */}
           <div className="flex-1 flex items-end justify-center pb-20">
             <div className="flex gap-2">
               {[0, 1, 2, 3].map(lane => (
                 <div key={lane} className="relative w-24 h-[600px] bg-white/5 border-2 border-white/20 rounded-lg overflow-hidden">
-                  {/* 판정선 */}
                   <div className="absolute bottom-10 left-0 right-0 h-1 bg-green-400 shadow-lg shadow-green-400/50"></div>
                   
-                  {/* 노트 */}
                   {notes.filter(n => n.lane === lane && !n.hit).map((note, idx) => (
                     <div
                       key={idx}
@@ -377,7 +350,6 @@ const YTRhythmGame = () => {
                     />
                   ))}
                   
-                  {/* 키 표시 */}
                   <div className="absolute bottom-2 left-0 right-0 text-center">
                     <div className="text-white text-xl font-bold bg-black/50 rounded-full w-10 h-10 flex items-center justify-center mx-auto">
                       {['D', 'F', 'J', 'K'][lane]}
@@ -389,7 +361,6 @@ const YTRhythmGame = () => {
           </div>
         </div>
         
-        {/* 게임 종료 화면 */}
         {gameState === 'ended' && (
           <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-20">
             <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 max-w-md w-full mx-4">
@@ -423,10 +394,8 @@ const YTRhythmGame = () => {
     );
   }
 
-  // 메인 화면
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      {/* 헤더 */}
       <div className="bg-black/30 backdrop-blur-lg border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -472,7 +441,6 @@ const YTRhythmGame = () => {
         </div>
       </div>
       
-      {/* 컨텐츠 */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         {page === 'home' && (
           <div className="text-center py-20">

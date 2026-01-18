@@ -1,414 +1,589 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>God Knight: 이모지 방치형 RPG</title>
-    <style>
-        :root {
-            --bg-color: #1a1a2e;
-            --card-bg: #16213e;
-            --accent: #e94560;
-            --text: #ffffff;
-            --gold: #f9d71c;
-        }
-        body {
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            user-select: none;
-            overflow: hidden;
-        }
-        .container {
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        /* 상단 정보 */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            background: var(--card-bg);
-            padding: 10px 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        .stat-box { font-size: 1.1rem; font-weight: bold; }
-        .gold-text { color: var(--gold); }
+import React, { useState, useEffect } from 'react';
+import { Sword, Shield, Zap, Heart, Crown, TrendingUp, Award, Star, Settings, ChevronRight } from 'lucide-react';
 
-        /* 전투 화면 */
-        .battle-stage {
-            position: relative;
-            height: 250px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        .level-badge {
-            background: var(--accent);
-            padding: 5px 15px;
-            border-radius: 20px;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        .characters {
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            width: 100%;
-            font-size: 4rem;
-        }
-        .knight { cursor: default; }
-        .monster { 
-            cursor: pointer; 
-            transition: transform 0.1s;
-        }
-        .monster:active { transform: scale(0.9); }
-        .shake { animation: shake 0.3s; }
-        
-        /* 체력바 */
-        .hp-container {
-            width: 80%;
-            height: 15px;
-            background: #333;
-            border-radius: 10px;
-            margin-top: 15px;
-            overflow: hidden;
-            border: 2px solid #555;
-        }
-        .hp-bar {
-            width: 100%;
-            height: 100%;
-            background: #ff4757;
-            transition: width 0.2s;
-        }
+export default function GodKnightIdle() {
+  const [knight, setKnight] = useState({
+    level: 1,
+    exp: 0,
+    expToNext: 100,
+    gold: 0,
+    damage: 10,
+    hp: 100,
+    maxHp: 100,
+    critChance: 5,
+    critDamage: 150
+  });
 
-        /* 컨트롤 패널 */
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .btn {
-            background: var(--card-bg);
-            border: 2px solid #444;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.2s;
-        }
-        .btn:hover { background: #1f2b4d; border-color: var(--accent); }
-        .btn:active { transform: translateY(2px); }
-        .btn-icon { font-size: 1.5rem; margin-right: 10px; }
-        .btn-cost { color: var(--gold); font-size: 0.9rem; }
-        
-        /* 유틸 버튼 */
-        .utils { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
-        .small-btn { padding: 8px 15px; background: #333; border: none; color: #aaa; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+  const [currentStage, setCurrentStage] = useState(1);
+  const [monster, setMonster] = useState(null);
+  const [battleLog, setBattleLog] = useState([]);
+  const [autoProgress, setAutoProgress] = useState(true);
 
-        /* 데미지 텍스트 애니메이션 */
-        .damage-text {
-            position: absolute;
-            color: #fff;
-            font-weight: bold;
-            font-size: 1.5rem;
-            pointer-events: none;
-            animation: floatUp 0.8s ease-out forwards;
-            text-shadow: 2px 2px 0 #000;
-        }
+  const [upgrades, setUpgrades] = useState({
+    weapon: { level: 1, cost: 50, multiplier: 1.5 },
+    armor: { level: 1, cost: 50, multiplier: 1.3 },
+    crit: { level: 0, cost: 100, multiplier: 1.2 },
+    blessing: { level: 0, cost: 200, multiplier: 2 }
+  });
 
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
-        }
-        @keyframes floatUp {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-50px) scale(1.2); opacity: 0; }
-        }
-    </style>
-</head>
-<body>
+  const [skills, setSkills] = useState({
+    holyStrike: { level: 0, cost: 150, damage: 50, cooldown: 0, maxCooldown: 5 },
+    divineShield: { level: 0, cost: 150, reduction: 20, cooldown: 0, maxCooldown: 8 },
+    lightningBolt: { level: 0, cost: 300, damage: 100, cooldown: 0, maxCooldown: 10 }
+  });
 
-<div class="container">
-    <div class="header">
-        <div class="stat-box">💰 <span id="ui-gold" class="gold-text">0</span></div>
-        <div class="stat-box">⚔️ <span id="ui-dps">0</span> DPS</div>
-    </div>
+  const [achievements, setAchievements] = useState([
+    { id: 'first_kill', name: '첫 승리', desc: '첫 몬스터 처치', completed: false, reward: 100 },
+    { id: 'stage_10', name: '숙련된 기사', desc: '10스테이지 도달', completed: false, reward: 500 },
+    { id: 'level_10', name: '신의 축복', desc: '레벨 10 달성', completed: false, reward: 1000 }
+  ]);
 
-    <div class="battle-stage">
-        <div class="level-badge">STAGE <span id="ui-stage">1</span></div>
-        <div class="characters">
-            <div class="knight">🛡️</div>
-            <div class="monster" id="monster" onclick="playerClick()">👾</div>
-        </div>
-        <div class="hp-container">
-            <div class="hp-bar" id="ui-hp"></div>
-        </div>
-        <div style="margin-top: 5px; font-size: 0.8rem;">
-            HP: <span id="ui-hp-text">10/10</span>
-        </div>
-    </div>
+  const [stats, setStats] = useState({
+    totalKills: 0,
+    totalGold: 0,
+    highestStage: 1,
+    playTime: 0
+  });
 
-    <div class="controls">
-        <button class="btn" onclick="upgrade('atk')">
-            <div>
-                <span class="btn-icon">🗡️</span> 강화 (공격력 +1)
-            </div>
-            <div class="btn-cost">💰 <span id="cost-atk">10</span></div>
-        </button>
-        <button class="btn" onclick="upgrade('auto')">
-            <div>
-                <span class="btn-icon">🤖</span> 동료 고용 (초당 공격)
-            </div>
-            <div class="btn-cost">💰 <span id="cost-auto">50</span></div>
-        </button>
-        <button class="btn" onclick="upgrade('crit')">
-            <div>
-                <span class="btn-icon">⚡</span> 치명타 (확률 UP)
-            </div>
-            <div class="btn-cost">💰 <span id="cost-crit">100</span></div>
-        </button>
-    </div>
+  const [activeTab, setActiveTab] = useState('battle');
 
-    <div class="utils">
-        <button class="small-btn" onclick="saveGame(true)">💾 강제 저장</button>
-        <button class="small-btn" onclick="resetGame()">🗑️ 초기화</button>
-    </div>
-</div>
-
-<script>
-    // --- 게임 데이터 및 설정 ---
-    const SECRET_KEY = "GOD_KNIGHT_SECRET"; // 암호화 키
-    let game = {
-        gold: 0,
-        stage: 1,
-        atk: 1,
-        autoAtk: 0,
-        critChance: 0, // %
-        cost: {
-            atk: 10,
-            auto: 50,
-            crit: 100
-        }
+  const generateMonster = (stage) => {
+    const baseHp = 50 + stage * 30;
+    const baseDamage = 5 + stage * 3;
+    return {
+      name: stage % 10 === 0 ? `보스 ${Math.floor(stage / 10)}` : `악마 ${stage}`,
+      hp: baseHp,
+      maxHp: baseHp,
+      damage: baseDamage,
+      goldReward: 10 + stage * 5,
+      expReward: 20 + stage * 10,
+      isBoss: stage % 10 === 0
     };
+  };
 
-    // 몬스터 상태 (저장 안 함)
-    let monster = {
-        hp: 10,
-        maxHp: 10,
-        emoji: '👾'
-    };
+  useEffect(() => {
+    if (!monster) {
+      setMonster(generateMonster(currentStage));
+    }
+  }, [currentStage]);
+
+  useEffect(() => {
+    const battleInterval = setInterval(() => {
+      if (!monster) return;
+
+      setMonster(prev => {
+        if (!prev) return prev;
+        
+        const newMonsterHp = prev.hp - calculateDamage();
+        
+        if (newMonsterHp <= 0) {
+          handleMonsterDefeat(prev);
+          return null;
+        }
+
+        const newKnightHp = knight.hp - prev.damage;
+        if (newKnightHp <= 0) {
+          addLog('💀 패배했습니다! 체력 회복 중...');
+          setKnight(k => ({ ...k, hp: k.maxHp }));
+        } else {
+          setKnight(k => ({ ...k, hp: newKnightHp }));
+        }
+
+        return { ...prev, hp: newMonsterHp };
+      });
+
+      setSkills(s => ({
+        holyStrike: { ...s.holyStrike, cooldown: Math.max(0, s.holyStrike.cooldown - 1) },
+        divineShield: { ...s.divineShield, cooldown: Math.max(0, s.divineShield.cooldown - 1) },
+        lightningBolt: { ...s.lightningBolt, cooldown: Math.max(0, s.lightningBolt.cooldown - 1) }
+      }));
+    }, 1000);
+
+    return () => clearInterval(battleInterval);
+  }, [monster, knight, skills]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStats(s => ({ ...s, playTime: s.playTime + 1 }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const calculateDamage = () => {
+    const baseDamage = knight.damage;
+    const isCrit = Math.random() * 100 < knight.critChance;
+    return isCrit ? Math.floor(baseDamage * (knight.critDamage / 100)) : baseDamage;
+  };
+
+  const handleMonsterDefeat = (defeatedMonster) => {
+    const goldGained = defeatedMonster.goldReward;
+    const expGained = defeatedMonster.expReward;
     
-    const monsterEmojis = ['👾', '🦇', '🐺', '💀', '👹', '🧛', '🧟', '🐉', '🐙', '🦖'];
+    setKnight(k => {
+      const newExp = k.exp + expGained;
+      const newGold = k.gold + goldGained;
+      
+      if (newExp >= k.expToNext) {
+        addLog(`⭐ 레벨 업! Lv.${k.level + 1}`);
+        return {
+          ...k,
+          level: k.level + 1,
+          exp: newExp - k.expToNext,
+          expToNext: Math.floor(k.expToNext * 1.5),
+          gold: newGold,
+          damage: k.damage + 5,
+          maxHp: k.maxHp + 20,
+          hp: k.maxHp + 20
+        };
+      }
+      
+      return { ...k, exp: newExp, gold: newGold };
+    });
 
-    // --- 암호화 및 쿠키 시스템 ---
+    setStats(s => ({
+      ...s,
+      totalKills: s.totalKills + 1,
+      totalGold: s.totalGold + goldGained,
+      highestStage: Math.max(s.highestStage, currentStage)
+    }));
+
+    checkAchievements();
     
-    // 간단한 XOR 암호화 + Base64
-    function encrypt(text) {
-        let result = '';
-        for(let i = 0; i < text.length; i++) {
-            result += String.fromCharCode(text.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
-        }
-        return btoa(result);
+    if (defeatedMonster.isBoss) {
+      addLog(`👑 보스 처치! +${goldGained} 골드`);
     }
 
-    function decrypt(cipher) {
-        try {
-            let text = atob(cipher);
-            let result = '';
-            for(let i = 0; i < text.length; i++) {
-                result += String.fromCharCode(text.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
-            }
-            return result;
-        } catch (e) {
-            return null;
-        }
+    if (autoProgress) {
+      setCurrentStage(c => c + 1);
+    } else {
+      addLog(`✅ 승리! 다음 스테이지로 이동하세요.`);
+    }
+  };
+
+  const checkAchievements = () => {
+    setAchievements(prev => prev.map(ach => {
+      if (ach.completed) return ach;
+      
+      let complete = false;
+      if (ach.id === 'first_kill' && stats.totalKills >= 0) complete = true;
+      if (ach.id === 'stage_10' && currentStage >= 10) complete = true;
+      if (ach.id === 'level_10' && knight.level >= 10) complete = true;
+      
+      if (complete) {
+        addLog(`🏆 업적 달성: ${ach.name}! +${ach.reward} 골드`);
+        setKnight(k => ({ ...k, gold: k.gold + ach.reward }));
+        return { ...ach, completed: true };
+      }
+      return ach;
+    }));
+  };
+
+  const addLog = (message) => {
+    setBattleLog(prev => [message, ...prev.slice(0, 4)]);
+  };
+
+  const buyUpgrade = (type) => {
+    const upgrade = upgrades[type];
+    if (knight.gold < upgrade.cost) return;
+
+    setKnight(k => ({ ...k, gold: k.gold - upgrade.cost }));
+    setUpgrades(u => ({
+      ...u,
+      [type]: {
+        ...u[type],
+        level: u[type].level + 1,
+        cost: Math.floor(u[type].cost * 1.5)
+      }
+    }));
+
+    if (type === 'weapon') {
+      setKnight(k => ({ ...k, damage: Math.floor(k.damage * upgrade.multiplier) }));
+    } else if (type === 'armor') {
+      setKnight(k => ({ ...k, maxHp: Math.floor(k.maxHp * upgrade.multiplier), hp: Math.floor(k.maxHp * upgrade.multiplier) }));
+    } else if (type === 'crit') {
+      setKnight(k => ({ ...k, critChance: k.critChance + 5 }));
+    } else if (type === 'blessing') {
+      setKnight(k => ({ ...k, damage: Math.floor(k.damage * upgrade.multiplier) }));
     }
 
-    function saveGame(alertUser = false) {
-        const json = JSON.stringify(game);
-        const encryptedData = encrypt(json);
-        // 쿠키 만료일 1년
-        document.cookie = `godKnightSave=${encryptedData}; path=/; max-age=31536000`;
-        if (alertUser) alert("게임이 안전하게 저장되었습니다! 💾");
+    addLog(`🔼 ${type} 업그레이드 완료!`);
+  };
+
+  const buySkill = (type) => {
+    const skill = skills[type];
+    if (knight.gold < skill.cost) return;
+
+    setKnight(k => ({ ...k, gold: k.gold - skill.cost }));
+    setSkills(s => ({
+      ...s,
+      [type]: {
+        ...s[type],
+        level: s[type].level + 1,
+        cost: Math.floor(s[type].cost * 1.8)
+      }
+    }));
+
+    addLog(`⚡ ${type} 스킬 강화!`);
+  };
+
+  const useSkill = (type) => {
+    const skill = skills[type];
+    if (skill.level === 0 || skill.cooldown > 0 || !monster) return;
+
+    if (type === 'holyStrike') {
+      const damage = skill.damage * (1 + skill.level * 0.5);
+      setMonster(m => m ? { ...m, hp: Math.max(0, m.hp - damage) } : null);
+      addLog(`⚔️ 신성한 일격! ${Math.floor(damage)} 피해`);
+    } else if (type === 'divineShield') {
+      const heal = skill.reduction * (1 + skill.level);
+      setKnight(k => ({ ...k, hp: Math.min(k.maxHp, k.hp + heal) }));
+      addLog(`🛡️ 신성한 방패! ${heal} 회복`);
+    } else if (type === 'lightningBolt') {
+      const damage = skill.damage * (1 + skill.level * 0.7);
+      setMonster(m => m ? { ...m, hp: Math.max(0, m.hp - damage) } : null);
+      addLog(`⚡ 천벌의 번개! ${Math.floor(damage)} 피해`);
     }
 
-    function loadGame() {
-        const cookies = document.cookie.split(';');
-        let saveData = null;
-        
-        for(let cookie of cookies) {
-            cookie = cookie.trim();
-            if(cookie.startsWith("godKnightSave=")) {
-                saveData = cookie.substring("godKnightSave=".length);
-                break;
-            }
-        }
+    setSkills(s => ({
+      ...s,
+      [type]: { ...s[type], cooldown: s[type].maxCooldown }
+    }));
+  };
 
-        if(saveData) {
-            const json = decrypt(saveData);
-            if(json) {
-                const loaded = JSON.parse(json);
-                game = { ...game, ...loaded }; // 병합
-                spawnMonster(false); // 로드 시 몬스터 체력 재설정
-            }
-        }
-        updateUI();
-    }
+  return (
+    <div className="w-full h-screen bg-slate-900 text-white overflow-hidden flex flex-col">
+      {/* Header */}
+      <div className="bg-slate-800 border-b-2 border-amber-500 px-6 py-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Crown className="text-amber-400" size={32} />
+            <div>
+              <h1 className="text-2xl font-bold text-amber-400">GOD KNIGHT</h1>
+              <p className="text-sm text-slate-400">신성한 기사의 여정</p>
+            </div>
+          </div>
+          <div className="flex gap-6 items-center">
+            <div className="text-right">
+              <div className="text-xs text-slate-400">레벨</div>
+              <div className="text-xl font-bold text-amber-400">{knight.level}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-slate-400">골드</div>
+              <div className="text-xl font-bold text-yellow-400">{knight.gold}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    function resetGame() {
-        if(confirm("정말 초기화 하시겠습니까?")) {
-            document.cookie = "godKnightSave=; path=/; max-age=0";
-            location.reload();
-        }
-    }
+      {/* Tab Navigation */}
+      <div className="bg-slate-800 border-b border-slate-700 px-6">
+        <div className="flex gap-1">
+          {['battle', 'upgrade', 'skills', 'stats'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === tab
+                  ? 'bg-slate-700 text-amber-400 border-b-2 border-amber-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-750'
+              }`}
+            >
+              {tab === 'battle' && '⚔️ 전투'}
+              {tab === 'upgrade' && '🔼 강화'}
+              {tab === 'skills' && '⚡ 스킬'}
+              {tab === 'stats' && '📊 통계'}
+            </button>
+          ))}
+        </div>
+      </div>
 
-    // --- 게임 로직 ---
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {activeTab === 'battle' && (
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Stage Info */}
+            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Award className="text-amber-400" size={24} />
+                  <span className="text-xl font-bold">스테이지 {currentStage}</span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoProgress}
+                    onChange={(e) => setAutoProgress(e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                  <span className="text-sm">자동 진행</span>
+                </label>
+              </div>
+            </div>
 
-    function spawnMonster(nextLevel = true) {
-        if (nextLevel) {
-            // 체력 공식: 기본 10 * 1.2^스테이지
-            monster.maxHp = Math.floor(10 * Math.pow(1.2, game.stage - 1));
-        }
-        monster.hp = monster.maxHp;
-        // 10스테이지마다 몬스터 외형 변경
-        const emojiIndex = Math.min(Math.floor((game.stage - 1) / 5), monsterEmojis.length - 1);
-        monster.emoji = monsterEmojis[emojiIndex];
-        
-        document.getElementById('monster').innerText = monster.emoji;
-        updateUI();
-    }
+            {/* Battle Area */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* Knight */}
+              <div className="bg-slate-800 border-2 border-blue-500 rounded-lg p-6">
+                <div className="text-center mb-4">
+                  <div className="text-6xl mb-2">🛡️</div>
+                  <h3 className="text-xl font-bold text-blue-400">신성한 기사</h3>
+                  <div className="text-sm text-slate-400">Lv.{knight.level}</div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="flex items-center gap-1">
+                        <Heart size={14} className="text-red-400" />
+                        체력
+                      </span>
+                      <span>{knight.hp} / {knight.maxHp}</span>
+                    </div>
+                    <div className="bg-slate-700 rounded-full h-3 overflow-hidden">
+                      <div 
+                        className="bg-red-500 h-full transition-all"
+                        style={{ width: `${(knight.hp / knight.maxHp) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>경험치</span>
+                      <span>{knight.exp} / {knight.expToNext}</span>
+                    </div>
+                    <div className="bg-slate-700 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-amber-400 h-full transition-all"
+                        style={{ width: `${(knight.exp / knight.expToNext) * 100}%` }}
+                      />
+                    </div>
+                  </div>
 
-    function hitMonster(dmg, isAuto = false) {
-        // 치명타 계산
-        let finalDmg = dmg;
-        let isCrit = false;
-        if (!isAuto && Math.random() * 100 < game.critChance) {
-            finalDmg *= 2;
-            isCrit = true;
-        }
+                  <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
+                    <div className="bg-slate-700 rounded p-2">
+                      <div className="text-slate-400">공격력</div>
+                      <div className="font-bold text-orange-400">{knight.damage}</div>
+                    </div>
+                    <div className="bg-slate-700 rounded p-2">
+                      <div className="text-slate-400">치명타율</div>
+                      <div className="font-bold text-purple-400">{knight.critChance}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-        monster.hp -= finalDmg;
-        
-        // 시각 효과
-        if (!isAuto) {
-            const monsterEl = document.getElementById('monster');
-            monsterEl.classList.remove('shake');
-            void monsterEl.offsetWidth; // 리플로우 강제
-            monsterEl.classList.add('shake');
-            showDamageText(finalDmg, isCrit);
-        }
+              {/* Monster */}
+              <div className="bg-slate-800 border-2 border-red-500 rounded-lg p-6">
+                {monster ? (
+                  <>
+                    <div className="text-center mb-4">
+                      <div className="text-6xl mb-2">{monster.isBoss ? '👹' : '😈'}</div>
+                      <h3 className="text-xl font-bold text-red-400">{monster.name}</h3>
+                      {monster.isBoss && <div className="text-xs text-amber-400">★ BOSS ★</div>}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="flex items-center gap-1">
+                            <Heart size={14} className="text-red-400" />
+                            체력
+                          </span>
+                          <span>{Math.max(0, monster.hp)} / {monster.maxHp}</span>
+                        </div>
+                        <div className="bg-slate-700 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className="bg-red-500 h-full transition-all"
+                            style={{ width: `${(monster.hp / monster.maxHp) * 100}%` }}
+                          />
+                        </div>
+                      </div>
 
-        if (monster.hp <= 0) {
-            // 몬스터 처치
-            const reward = Math.floor(game.stage * (Math.random() * 2 + 1)); // 1~3배 골드
-            game.gold += reward;
-            game.stage++;
-            spawnMonster(true);
-            saveGame(); // 스테이지 클리어 시 자동 저장
-        }
-        updateUI();
-    }
+                      <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
+                        <div className="bg-slate-700 rounded p-2">
+                          <div className="text-slate-400">공격력</div>
+                          <div className="font-bold text-red-400">{monster.damage}</div>
+                        </div>
+                        <div className="bg-slate-700 rounded p-2">
+                          <div className="text-slate-400">보상</div>
+                          <div className="font-bold text-yellow-400">{monster.goldReward}G</div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-slate-500">
+                    다음 적 생성 중...
+                  </div>
+                )}
+              </div>
+            </div>
 
-    function playerClick() {
-        hitMonster(game.atk);
-    }
+            {/* Skills */}
+            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
+              <h3 className="font-bold mb-3 flex items-center gap-2">
+                <Zap className="text-yellow-400" />
+                스킬
+              </h3>
+              <div className="grid grid-cols-3 gap-3">
+                {Object.entries(skills).map(([key, skill]) => (
+                  <button
+                    key={key}
+                    onClick={() => useSkill(key)}
+                    disabled={skill.level === 0 || skill.cooldown > 0}
+                    className={`p-3 rounded border-2 transition-all ${
+                      skill.level === 0
+                        ? 'bg-slate-700 border-slate-600 text-slate-500 cursor-not-allowed'
+                        : skill.cooldown > 0
+                        ? 'bg-slate-700 border-slate-600 cursor-not-allowed'
+                        : 'bg-slate-700 border-purple-500 hover:bg-purple-900 cursor-pointer'
+                    }`}
+                  >
+                    <div className="font-bold text-sm">{key}</div>
+                    <div className="text-xs text-slate-400">Lv.{skill.level}</div>
+                    {skill.cooldown > 0 && (
+                      <div className="text-xs text-amber-400 mt-1">{skill.cooldown}초</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-    function upgrade(type) {
-        if (type === 'atk') {
-            if (game.gold >= game.cost.atk) {
-                game.gold -= game.cost.atk;
-                game.atk += 1;
-                game.cost.atk = Math.floor(game.cost.atk * 1.3);
-            }
-        } else if (type === 'auto') {
-            if (game.gold >= game.cost.auto) {
-                game.gold -= game.cost.auto;
-                game.autoAtk += 1; // 초당 +1 데미지
-                game.cost.auto = Math.floor(game.cost.auto * 1.5);
-            }
-        } else if (type === 'crit') {
-            if (game.gold >= game.cost.crit) {
-                game.gold -= game.cost.crit;
-                game.critChance += 1; // 1% 증가
-                game.cost.crit = Math.floor(game.cost.crit * 1.5);
-            }
-        }
-        updateUI();
-        saveGame();
-    }
+            {/* Battle Log */}
+            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
+              <h3 className="font-bold mb-2">전투 로그</h3>
+              <div className="space-y-1 text-sm font-mono">
+                {battleLog.map((log, i) => (
+                  <div key={i} className="text-slate-300">{log}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
-    // --- UI 업데이트 ---
-    function updateUI() {
-        document.getElementById('ui-gold').innerText = game.gold.toLocaleString();
-        document.getElementById('ui-stage').innerText = game.stage;
-        document.getElementById('ui-dps').innerText = game.autoAtk;
-        
-        // 몬스터 체력바
-        const hpPercent = Math.max(0, (monster.hp / monster.maxHp) * 100);
-        document.getElementById('ui-hp').style.width = hpPercent + "%";
-        document.getElementById('ui-hp-text').innerText = `${Math.ceil(monster.hp)} / ${monster.maxHp}`;
+        {activeTab === 'upgrade' && (
+          <div className="max-w-4xl mx-auto space-y-4">
+            {Object.entries(upgrades).map(([key, upgrade]) => (
+              <div key={key} className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg capitalize flex items-center gap-2">
+                      {key === 'weapon' && <Sword className="text-orange-400" size={20} />}
+                      {key === 'armor' && <Shield className="text-blue-400" size={20} />}
+                      {key === 'crit' && <Star className="text-purple-400" size={20} />}
+                      {key === 'blessing' && <Crown className="text-amber-400" size={20} />}
+                      {key}
+                    </h3>
+                    <div className="text-sm text-slate-400">레벨 {upgrade.level}</div>
+                  </div>
+                  <button
+                    onClick={() => buyUpgrade(key)}
+                    disabled={knight.gold < upgrade.cost}
+                    className={`px-6 py-2 rounded font-bold transition-all ${
+                      knight.gold < upgrade.cost
+                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        : 'bg-amber-600 hover:bg-amber-700 text-white'
+                    }`}
+                  >
+                    {upgrade.cost} 골드
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-        // 버튼 가격 업데이트
-        document.getElementById('cost-atk').innerText = game.cost.atk;
-        document.getElementById('cost-auto').innerText = game.cost.auto;
-        document.getElementById('cost-crit').innerText = game.cost.crit;
-    }
+        {activeTab === 'skills' && (
+          <div className="max-w-4xl mx-auto space-y-4">
+            {Object.entries(skills).map(([key, skill]) => (
+              <div key={key} className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg capitalize">{key}</h3>
+                    <div className="text-sm text-slate-400">
+                      레벨 {skill.level} | 쿨다운: {skill.maxCooldown}초
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => buySkill(key)}
+                    disabled={knight.gold < skill.cost}
+                    className={`px-6 py-2 rounded font-bold transition-all ${
+                      knight.gold < skill.cost
+                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    {skill.cost} 골드
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-    function showDamageText(dmg, isCrit) {
-        const stage = document.querySelector('.battle-stage');
-        const text = document.createElement('div');
-        text.className = 'damage-text';
-        text.innerText = dmg;
-        
-        if (isCrit) {
-            text.style.color = '#ffeb3b';
-            text.style.fontSize = '2rem';
-            text.innerText += "!";
-        }
+        {activeTab === 'stats' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <TrendingUp className="text-green-400" />
+                통계
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-700 rounded p-4">
+                  <div className="text-slate-400 text-sm">총 처치</div>
+                  <div className="text-2xl font-bold text-red-400">{stats.totalKills}</div>
+                </div>
+                <div className="bg-slate-700 rounded p-4">
+                  <div className="text-slate-400 text-sm">총 획득 골드</div>
+                  <div className="text-2xl font-bold text-yellow-400">{stats.totalGold}</div>
+                </div>
+                <div className="bg-slate-700 rounded p-4">
+                  <div className="text-slate-400 text-sm">최고 스테이지</div>
+                  <div className="text-2xl font-bold text-purple-400">{stats.highestStage}</div>
+                </div>
+                <div className="bg-slate-700 rounded p-4">
+                  <div className="text-slate-400 text-sm">플레이 시간</div>
+                  <div className="text-2xl font-bold text-blue-400">{Math.floor(stats.playTime / 60)}분</div>
+                </div>
+              </div>
+            </div>
 
-        // 랜덤 위치 약간 조정
-        const randomX = (Math.random() - 0.5) * 50;
-        text.style.transform = `translateX(${randomX}px)`;
-        
-        stage.appendChild(text);
-        setTimeout(() => text.remove(), 800);
-    }
-
-    // --- 메인 루프 ---
-    setInterval(() => {
-        if (game.autoAtk > 0) {
-            // 초당 데미지를 10분할해서 0.1초마다 적용 (부드럽게)
-            hitMonster(game.autoAtk / 10, true);
-        }
-    }, 100);
-
-    // 게임 시작
-    loadGame();
-    spawnMonster(false);
-
-</script>
-
-</body>
-</html>
+            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Award className="text-amber-400" />
+                업적
+              </h2>
+              <div className="space-y-3">
+                {achievements.map(ach => (
+                  <div 
+                    key={ach.id}
+                    className={`p-4 rounded border-2 ${
+                      ach.completed 
+                        ? 'bg-amber-900 border-amber-500' 
+                        : 'bg-slate-700 border-slate-600'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold">{ach.name}</h3>
+                        <p className="text-sm text-slate-400">{ach.desc}</p>
+                      </div>
+                      <div className="text-right">
+                        {ach.completed ? (
+                          <span className="text-amber-400 font-bold">✓ 완료</span>
+                        ) : (
+                          <span className="text-yellow-400 font-bold">+{ach.reward}G</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

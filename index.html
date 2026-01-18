@@ -1,139 +1,577 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 주식 분석 시뮬레이터</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: 'Pretendard', sans-serif; background: #f4f7f9; margin: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        input, button { padding: 10px; border-radius: 6px; border: 1px solid #ccc; }
-        button { background: #007bff; color: white; cursor: pointer; border: none; }
-        #chart-container { position: relative; height: 50vh; width: 100%; }
-        .analysis-box { margin-top: 20px; padding: 15px; border-left: 5px solid #007bff; background: #eef6ff; }
-        .trade-log { margin-top: 10px; font-size: 0.9em; line-height: 1.6; }
-        .buy { color: red; font-weight: bold; }
-        .sell { color: blue; font-weight: bold; }
-    </style>
-</head>
-<body>
+import React, { useState, useEffect, useRef } from 'react';
+import { Music, Play, Upload, Users, Trophy, LogOut, Home } from 'lucide-react';
 
-<div class="container">
-    <h2>📊 주식 분석 & 자동 매매 시뮬레이션</h2>
-    
-    <div class="controls">
-        <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" value="005930">
-        <input type="number" id="period" placeholder="분석 기간(일)" value="30">
-        <button onclick="analyzeStock()">분석 실행</button>
-    </div>
+const YTRhythmGame = () => {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState('home'); // home, game, community
+  const [songs, setSongs] = useState([]);
+  const [currentSong, setCurrentSong] = useState(null);
+  const [gameState, setGameState] = useState('idle'); // idle, playing, ended
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [notes, setNotes] = useState([]);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  const gameRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const animationRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const playerRef = useRef(null);
 
-    <div id="chart-container">
-        <canvas id="stockChart"></canvas>
-    </div>
+  // 스토리지 키
+  const STORAGE_KEYS = {
+    USER: 'rhythm-game-user',
+    SONGS: 'rhythm-game-songs'
+  };
 
-    <div id="analysisResult" class="analysis-box" style="display:none;">
-        <h3>🧐 분석 결과 및 매매 전략</h3>
-        <p id="summaryText"></p>
-        <hr>
-        <div id="tradeLog" class="trade-log"></div>
-    </div>
-</div>
+  // 초기 로드
+  useEffect(() => {
+    loadUser();
+    loadSongs();
+    loadYouTubeAPI();
+  }, []);
 
-<script>
-let myChart = null;
-
-function analyzeStock() {
-    const code = document.getElementById('stockCode').value;
-    const period = parseInt(document.getElementById('period').value);
-    
-    // 1. 가상 데이터 생성 (실제 환경에서는 API 호출 필요)
-    const data = generateMockData(period);
-    
-    // 2. 상한가/하한가 및 지지/저항선 계산
-    const highPrice = Math.max(...data.prices);
-    const lowPrice = Math.min(...data.prices);
-    
-    // 3. 차트 그리기
-    renderChart(data, highPrice, lowPrice);
-    
-    // 4. 매매 시뮬레이션 및 설명 생성
-    generateAnalysis(data, highPrice, lowPrice);
-}
-
-function generateMockData(days) {
-    let prices = [];
-    let labels = [];
-    let basePrice = 70000;
-    
-    for (let i = 0; i < days; i++) {
-        basePrice += (Math.random() - 0.5) * 2000;
-        prices.push(Math.floor(basePrice));
-        labels.push(`${i+1}일차`);
+  const loadYouTubeAPI = () => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
-    return { prices, labels };
-}
+  };
 
-function renderChart(data, high, low) {
-    const ctx = document.getElementById('stockChart').getContext('2d');
+  const loadUser = async () => {
+    try {
+      const result = await window.storage.get(STORAGE_KEYS.USER);
+      if (result?.value) {
+        setUser(JSON.parse(result.value));
+      }
+    } catch (e) {
+      console.log('No user found');
+    }
+  };
+
+  const loadSongs = async () => {
+    try {
+      const result = await window.storage.get(STORAGE_KEYS.SONGS, true);
+      if (result?.value) {
+        setSongs(JSON.parse(result.value));
+      }
+    } catch (e) {
+      console.log('No songs found');
+      setSongs([]);
+    }
+  };
+
+  const saveSongs = async (newSongs) => {
+    try {
+      await window.storage.set(STORAGE_KEYS.SONGS, JSON.stringify(newSongs), true);
+      setSongs(newSongs);
+    } catch (e) {
+      console.error('Failed to save songs:', e);
+    }
+  };
+
+  // 구글 로그인 시뮬레이션 (실제로는 Firebase 사용)
+  const handleGoogleLogin = async () => {
+    const mockUser = {
+      id: `user_${Date.now()}`,
+      name: '플레이어 ' + Math.floor(Math.random() * 1000),
+      email: `player${Math.floor(Math.random() * 1000)}@example.com`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`,
+      loginTime: Date.now()
+    };
     
-    if (myChart) myChart.destroy();
+    try {
+      await window.storage.set(STORAGE_KEYS.USER, JSON.stringify(mockUser));
+      setUser(mockUser);
+    } catch (e) {
+      console.error('Login failed:', e);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await window.storage.delete(STORAGE_KEYS.USER);
+      setUser(null);
+      setPage('home');
+    } catch (e) {
+      console.error('Logout failed:', e);
+    }
+  };
+
+  // YouTube URL에서 비디오 ID 추출
+  const extractVideoId = (url) => {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+  };
+
+  // 비트 감지 알고리즘 (간단한 버전)
+  const analyzeBeat = async (videoId) => {
+    setIsAnalyzing(true);
     
-    myChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.labels,
-            datasets: [{
-                label: '주가',
-                data: data.prices,
-                borderColor: '#333',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                autocolors: false,
-                annotation: { // 수평선 추가 로직 (간소화)
-                }
+    // 실제로는 Web Audio API를 사용하여 오디오 분석
+    // 여기서는 시뮬레이션된 비트 데이터 생성
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const generatedNotes = [];
+    const duration = 120; // 2분 곡 가정
+    const bpm = 120 + Math.random() * 60; // 120-180 BPM
+    const beatInterval = 60 / bpm;
+    
+    // 4개 레인에 노트 생성
+    for (let time = 2; time < duration; time += beatInterval) {
+      const lane = Math.floor(Math.random() * 4);
+      generatedNotes.push({
+        time,
+        lane,
+        hit: false
+      });
+    }
+    
+    setIsAnalyzing(false);
+    return generatedNotes;
+  };
+
+  // 노래 업로드
+  const handleUploadSong = async () => {
+    if (!youtubeUrl.trim()) return;
+    
+    const videoId = extractVideoId(youtubeUrl);
+    if (!videoId) {
+      alert('올바른 YouTube URL을 입력해주세요.');
+      return;
+    }
+
+    const generatedNotes = await analyzeBeat(videoId);
+    
+    const newSong = {
+      id: `song_${Date.now()}`,
+      videoId,
+      title: `곡 ${songs.length + 1}`,
+      uploader: user.name,
+      uploaderId: user.id,
+      uploadDate: Date.now(),
+      notes: generatedNotes,
+      plays: 0,
+      bestScore: 0
+    };
+
+    await saveSongs([...songs, newSong]);
+    setYoutubeUrl('');
+    setPage('community');
+  };
+
+  // 게임 시작
+  const startGame = (song) => {
+    setCurrentSong(song);
+    setNotes(JSON.parse(JSON.stringify(song.notes)));
+    setScore(0);
+    setCombo(0);
+    setGameState('playing');
+    startTimeRef.current = null;
+    
+    // YouTube Player 생성
+    if (window.YT && window.YT.Player) {
+      setTimeout(() => {
+        if (playerRef.current) {
+          playerRef.current.destroy();
+        }
+        playerRef.current = new window.YT.Player('youtube-player', {
+          videoId: song.videoId,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            modestbranding: 1
+          },
+          events: {
+            onReady: (e) => e.target.playVideo(),
+            onStateChange: (e) => {
+              if (e.data === window.YT.PlayerState.PLAYING && !startTimeRef.current) {
+                startTimeRef.current = Date.now();
+                gameLoop();
+              }
             }
-        }
-    });
-}
-
-function generateAnalysis(data, high, low) {
-    const resultDiv = document.getElementById('analysisResult');
-    const summary = document.getElementById('summaryText');
-    const log = document.getElementById('tradeLog');
-    
-    resultDiv.style.display = 'block';
-    
-    // 분석 설명
-    summary.innerHTML = `현재 분석 기간 내 <b>최고가(저항선)는 ${high.toLocaleString()}원</b>이며, 
-    <b>최저가(지지선)는 ${low.toLocaleString()}원</b>입니다. <br>
-    현재 주가는 전반적으로 ${data.prices[0] < data.prices[data.prices.length-1] ? '상승' : '하락'} 추세에 있습니다.`;
-
-    // 매매 시뮬레이션 (단순 골든크로스/데드크로스 개념 적용)
-    let logHtml = "<b>[매매 시뮬레이션 리포트]</b><br>";
-    let holding = false;
-    
-    for(let i = 1; i < data.prices.length; i++) {
-        // 간단한 로직: 저점 대비 2% 반등시 매수, 고점 대비 2% 하락시 매도
-        if(!holding && data.prices[i] < low * 1.05) {
-            logHtml += `<span class="buy">● ${i+1}일차 매수:</span> ${data.prices[i].toLocaleString()}원 (바닥권 진입)<br>`;
-            holding = true;
-        } else if(holding && data.prices[i] > high * 0.95) {
-            logHtml += `<span class="sell">○ ${i+1}일차 매도:</span> ${data.prices[i].toLocaleString()}원 (목표가 도달 수익실현)<br>`;
-            holding = false;
-        }
+          }
+        });
+      }, 100);
     }
-    log.innerHTML = logHtml;
-}
-</script>
+  };
 
-</body>
-</html>
+  // 게임 루프
+  const gameLoop = () => {
+    if (gameState !== 'playing') return;
+    
+    const currentTime = (Date.now() - startTimeRef.current) / 1000;
+    
+    setNotes(prevNotes => {
+      const updated = prevNotes.map(note => ({
+        ...note,
+        position: ((currentTime - note.time) / 2) * 100 + 100
+      }));
+      
+      // 화면 밖으로 나간 노트 제거 (미스 처리)
+      return updated.filter(note => {
+        if (note.position > 110 && !note.hit) {
+          setCombo(0);
+          return false;
+        }
+        return note.position < 110 || note.hit;
+      });
+    });
+    
+    animationRef.current = requestAnimationFrame(gameLoop);
+  };
+
+  // 키 입력 처리
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (gameState !== 'playing') return;
+      
+      const keyMap = { 'd': 0, 'f': 1, 'j': 2, 'k': 3 };
+      const lane = keyMap[e.key.toLowerCase()];
+      
+      if (lane !== undefined) {
+        const currentTime = (Date.now() - startTimeRef.current) / 1000;
+        
+        setNotes(prevNotes => {
+          const hitNote = prevNotes.find(note => 
+            note.lane === lane && 
+            !note.hit && 
+            Math.abs(currentTime - note.time) < 0.15
+          );
+          
+          if (hitNote) {
+            const accuracy = Math.abs(currentTime - hitNote.time);
+            let points = 0;
+            
+            if (accuracy < 0.05) points = 300; // Perfect
+            else if (accuracy < 0.1) points = 100; // Good
+            else points = 50; // OK
+            
+            setScore(s => s + points * (combo + 1));
+            setCombo(c => c + 1);
+            
+            return prevNotes.map(n => 
+              n === hitNote ? { ...n, hit: true } : n
+            );
+          } else {
+            setCombo(0);
+          }
+          
+          return prevNotes;
+        });
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState, combo]);
+
+  // 게임 종료
+  const endGame = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    if (playerRef.current) {
+      playerRef.current.destroy();
+      playerRef.current = null;
+    }
+    setGameState('ended');
+    
+    // 최고 점수 업데이트
+    if (score > currentSong.bestScore) {
+      const updatedSongs = songs.map(s => 
+        s.id === currentSong.id ? { ...s, bestScore: score, plays: s.plays + 1 } : s
+      );
+      saveSongs(updatedSongs);
+    }
+  };
+
+  useEffect(() => {
+    if (gameState === 'playing' && notes.length === 0) {
+      setTimeout(endGame, 2000);
+    }
+  }, [notes, gameState]);
+
+  // 로그인 화면
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full border border-white/20">
+          <div className="text-center mb-8">
+            <Music className="w-16 h-16 mx-auto mb-4 text-pink-400" />
+            <h1 className="text-4xl font-bold text-white mb-2">YouTube 리듬게임</h1>
+            <p className="text-gray-300">좋아하는 노래로 리듬게임을 즐겨보세요!</p>
+          </div>
+          
+          <button
+            onClick={handleGoogleLogin}
+            className="w-full bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-3 transition"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Google로 로그인
+          </button>
+          
+          <p className="text-xs text-gray-400 mt-4 text-center">
+            데모 버전입니다. 실제 Google 인증은 Firebase를 사용합니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 게임 화면
+  if (gameState === 'playing' || gameState === 'ended') {
+    return (
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        {/* YouTube Player */}
+        <div className="absolute inset-0 opacity-30">
+          <div id="youtube-player" className="w-full h-full"></div>
+        </div>
+        
+        {/* 게임 영역 */}
+        <div className="relative z-10 h-screen flex flex-col">
+          {/* 상단 UI */}
+          <div className="p-4 bg-gradient-to-b from-black/80 to-transparent">
+            <div className="flex justify-between items-center text-white">
+              <div>
+                <div className="text-2xl font-bold">점수: {score.toLocaleString()}</div>
+                <div className="text-sm text-gray-300">{currentSong?.title}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-yellow-400">콤보 x{combo}</div>
+                <button onClick={endGame} className="text-sm text-red-400 hover:text-red-300 mt-1">
+                  종료
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* 게임 레인 */}
+          <div className="flex-1 flex items-end justify-center pb-20">
+            <div className="flex gap-2">
+              {[0, 1, 2, 3].map(lane => (
+                <div key={lane} className="relative w-24 h-[600px] bg-white/5 border-2 border-white/20 rounded-lg overflow-hidden">
+                  {/* 판정선 */}
+                  <div className="absolute bottom-10 left-0 right-0 h-1 bg-green-400 shadow-lg shadow-green-400/50"></div>
+                  
+                  {/* 노트 */}
+                  {notes.filter(n => n.lane === lane && !n.hit).map((note, idx) => (
+                    <div
+                      key={idx}
+                      className="absolute left-1 right-1 h-12 bg-gradient-to-b from-pink-500 to-purple-500 rounded-lg shadow-lg"
+                      style={{
+                        bottom: `${note.position || 0}%`,
+                        opacity: note.position > 100 ? 0 : 1
+                      }}
+                    />
+                  ))}
+                  
+                  {/* 키 표시 */}
+                  <div className="absolute bottom-2 left-0 right-0 text-center">
+                    <div className="text-white text-xl font-bold bg-black/50 rounded-full w-10 h-10 flex items-center justify-center mx-auto">
+                      {['D', 'F', 'J', 'K'][lane]}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        {/* 게임 종료 화면 */}
+        {gameState === 'ended' && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-20">
+            <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 max-w-md w-full mx-4">
+              <div className="text-center text-white">
+                <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
+                <h2 className="text-3xl font-bold mb-4">게임 종료!</h2>
+                <div className="text-5xl font-bold mb-2">{score.toLocaleString()}</div>
+                <div className="text-gray-200 mb-6">최대 콤보: {combo}</div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => startGame(currentSong)}
+                    className="flex-1 bg-white text-purple-600 font-semibold py-3 rounded-lg hover:bg-gray-100"
+                  >
+                    다시하기
+                  </button>
+                  <button
+                    onClick={() => {
+                      setGameState('idle');
+                      setPage('community');
+                    }}
+                    className="flex-1 bg-purple-800 text-white font-semibold py-3 rounded-lg hover:bg-purple-700"
+                  >
+                    나가기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 메인 화면
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      {/* 헤더 */}
+      <div className="bg-black/30 backdrop-blur-lg border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Music className="w-8 h-8 text-pink-400" />
+            <nav className="flex gap-4">
+              <button
+                onClick={() => setPage('home')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                  page === 'home' ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                홈
+              </button>
+              <button
+                onClick={() => setPage('upload')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                  page === 'upload' ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                업로드
+              </button>
+              <button
+                onClick={() => setPage('community')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                  page === 'community' ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                커뮤니티
+              </button>
+            </nav>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <img src={user.avatar} alt="" className="w-8 h-8 rounded-full" />
+            <span className="text-white font-medium">{user.name}</span>
+            <button onClick={handleLogout} className="text-gray-400 hover:text-white">
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* 컨텐츠 */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {page === 'home' && (
+          <div className="text-center py-20">
+            <h1 className="text-6xl font-bold text-white mb-4">YouTube 리듬게임</h1>
+            <p className="text-xl text-gray-300 mb-8">좋아하는 노래를 업로드하고 친구들과 함께 즐겨보세요!</p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => setPage('upload')}
+                className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-xl text-lg"
+              >
+                노래 업로드하기
+              </button>
+              <button
+                onClick={() => setPage('community')}
+                className="bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-xl text-lg border border-white/20"
+              >
+                곡 둘러보기
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {page === 'upload' && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+              <h2 className="text-3xl font-bold text-white mb-6">YouTube 링크 업로드</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-300 mb-2">YouTube URL</label>
+                  <input
+                    type="text"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+                
+                <button
+                  onClick={handleUploadSong}
+                  disabled={isAnalyzing || !youtubeUrl.trim()}
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg"
+                >
+                  {isAnalyzing ? '분석 중...' : '업로드하기'}
+                </button>
+                
+                <p className="text-sm text-gray-400 mt-4">
+                  * YouTube 영상의 오디오를 자동으로 분석하여 박자를 추출합니다. (약 2-3초 소요)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {page === 'community' && (
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-6">커뮤니티 곡</h2>
+            {songs.length === 0 ? (
+              <div className="text-center py-20">
+                <Music className="w-16 h-16 mx-auto mb-4 text-gray-500" />
+                <p className="text-gray-400 mb-4">아직 업로드된 곡이 없습니다.</p>
+                <button
+                  onClick={() => setPage('upload')}
+                  className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-3 px-6 rounded-lg"
+                >
+                  첫 곡 업로드하기
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {songs.map(song => (
+                  <div key={song.id} className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 hover:bg-white/15 transition">
+                    <img
+                      src={`https://img.youtube.com/vi/${song.videoId}/mqdefault.jpg`}
+                      alt=""
+                      className="w-full h-40 object-cover rounded-lg mb-3"
+                    />
+                    <h3 className="text-white font-bold mb-1">{song.title}</h3>
+                    <p className="text-gray-400 text-sm mb-2">업로드: {song.uploader}</p>
+                    <div className="flex items-center justify-between text-sm text-gray-400 mb-3">
+                      <span>플레이 {song.plays}회</span>
+                      <span>최고 점수: {song.bestScore.toLocaleString()}</span>
+                    </div>
+                    <button
+                      onClick={() => startGame(song)}
+                      className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      플레이
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default YTRhythmGame;

@@ -1,589 +1,641 @@
-import React, { useState, useEffect } from 'react';
-import { Sword, Shield, Zap, Heart, Crown, TrendingUp, Award, Star, Settings, ChevronRight } from 'lucide-react';
-
-export default function GodKnightIdle() {
-  const [knight, setKnight] = useState({
-    level: 1,
-    exp: 0,
-    expToNext: 100,
-    gold: 0,
-    damage: 10,
-    hp: 100,
-    maxHp: 100,
-    critChance: 5,
-    critDamage: 150
-  });
-
-  const [currentStage, setCurrentStage] = useState(1);
-  const [monster, setMonster] = useState(null);
-  const [battleLog, setBattleLog] = useState([]);
-  const [autoProgress, setAutoProgress] = useState(true);
-
-  const [upgrades, setUpgrades] = useState({
-    weapon: { level: 1, cost: 50, multiplier: 1.5 },
-    armor: { level: 1, cost: 50, multiplier: 1.3 },
-    crit: { level: 0, cost: 100, multiplier: 1.2 },
-    blessing: { level: 0, cost: 200, multiplier: 2 }
-  });
-
-  const [skills, setSkills] = useState({
-    holyStrike: { level: 0, cost: 150, damage: 50, cooldown: 0, maxCooldown: 5 },
-    divineShield: { level: 0, cost: 150, reduction: 20, cooldown: 0, maxCooldown: 8 },
-    lightningBolt: { level: 0, cost: 300, damage: 100, cooldown: 0, maxCooldown: 10 }
-  });
-
-  const [achievements, setAchievements] = useState([
-    { id: 'first_kill', name: '첫 승리', desc: '첫 몬스터 처치', completed: false, reward: 100 },
-    { id: 'stage_10', name: '숙련된 기사', desc: '10스테이지 도달', completed: false, reward: 500 },
-    { id: 'level_10', name: '신의 축복', desc: '레벨 10 달성', completed: false, reward: 1000 }
-  ]);
-
-  const [stats, setStats] = useState({
-    totalKills: 0,
-    totalGold: 0,
-    highestStage: 1,
-    playTime: 0
-  });
-
-  const [activeTab, setActiveTab] = useState('battle');
-
-  const generateMonster = (stage) => {
-    const baseHp = 50 + stage * 30;
-    const baseDamage = 5 + stage * 3;
-    return {
-      name: stage % 10 === 0 ? `보스 ${Math.floor(stage / 10)}` : `악마 ${stage}`,
-      hp: baseHp,
-      maxHp: baseHp,
-      damage: baseDamage,
-      goldReward: 10 + stage * 5,
-      expReward: 20 + stage * 10,
-      isBoss: stage % 10 === 0
-    };
-  };
-
-  useEffect(() => {
-    if (!monster) {
-      setMonster(generateMonster(currentStage));
-    }
-  }, [currentStage]);
-
-  useEffect(() => {
-    const battleInterval = setInterval(() => {
-      if (!monster) return;
-
-      setMonster(prev => {
-        if (!prev) return prev;
-        
-        const newMonsterHp = prev.hp - calculateDamage();
-        
-        if (newMonsterHp <= 0) {
-          handleMonsterDefeat(prev);
-          return null;
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>화폐 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        const newKnightHp = knight.hp - prev.damage;
-        if (newKnightHp <= 0) {
-          addLog('💀 패배했습니다! 체력 회복 중...');
-          setKnight(k => ({ ...k, hp: k.maxHp }));
-        } else {
-          setKnight(k => ({ ...k, hp: newKnightHp }));
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        return { ...prev, hp: newMonsterHp };
-      });
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-      setSkills(s => ({
-        holyStrike: { ...s.holyStrike, cooldown: Math.max(0, s.holyStrike.cooldown - 1) },
-        divineShield: { ...s.divineShield, cooldown: Math.max(0, s.divineShield.cooldown - 1) },
-        lightningBolt: { ...s.lightningBolt, cooldown: Math.max(0, s.lightningBolt.cooldown - 1) }
-      }));
-    }, 1000);
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
 
-    return () => clearInterval(battleInterval);
-  }, [monster, knight, skills]);
+        .auth-box {
+            max-width: 400px;
+            margin: 100px auto;
+        }
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStats(s => ({ ...s, playTime: s.playTime + 1 }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+        h1, h2, h3 {
+            color: #2d3748;
+            margin-bottom: 16px;
+        }
 
-  const calculateDamage = () => {
-    const baseDamage = knight.damage;
-    const isCrit = Math.random() * 100 < knight.critChance;
-    return isCrit ? Math.floor(baseDamage * (knight.critDamage / 100)) : baseDamage;
-  };
+        .input-group {
+            margin-bottom: 16px;
+        }
 
-  const handleMonsterDefeat = (defeatedMonster) => {
-    const goldGained = defeatedMonster.goldReward;
-    const expGained = defeatedMonster.expReward;
-    
-    setKnight(k => {
-      const newExp = k.exp + expGained;
-      const newGold = k.gold + goldGained;
-      
-      if (newExp >= k.expToNext) {
-        addLog(`⭐ 레벨 업! Lv.${k.level + 1}`);
-        return {
-          ...k,
-          level: k.level + 1,
-          exp: newExp - k.expToNext,
-          expToNext: Math.floor(k.expToNext * 1.5),
-          gold: newGold,
-          damage: k.damage + 5,
-          maxHp: k.maxHp + 20,
-          hp: k.maxHp + 20
-        };
-      }
-      
-      return { ...k, exp: newExp, gold: newGold };
-    });
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 500;
+        }
 
-    setStats(s => ({
-      ...s,
-      totalKills: s.totalKills + 1,
-      totalGold: s.totalGold + goldGained,
-      highestStage: Math.max(s.highestStage, currentStage)
-    }));
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
 
-    checkAchievements();
-    
-    if (defeatedMonster.isBoss) {
-      addLog(`👑 보스 처치! +${goldGained} 골드`);
-    }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
 
-    if (autoProgress) {
-      setCurrentStage(c => c + 1);
-    } else {
-      addLog(`✅ 승리! 다음 스테이지로 이동하세요.`);
-    }
-  };
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-  const checkAchievements = () => {
-    setAchievements(prev => prev.map(ach => {
-      if (ach.completed) return ach;
-      
-      let complete = false;
-      if (ach.id === 'first_kill' && stats.totalKills >= 0) complete = true;
-      if (ach.id === 'stage_10' && currentStage >= 10) complete = true;
-      if (ach.id === 'level_10' && knight.level >= 10) complete = true;
-      
-      if (complete) {
-        addLog(`🏆 업적 달성: ${ach.name}! +${ach.reward} 골드`);
-        setKnight(k => ({ ...k, gold: k.gold + ach.reward }));
-        return { ...ach, completed: true };
-      }
-      return ach;
-    }));
-  };
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            width: 100%;
+        }
 
-  const addLog = (message) => {
-    setBattleLog(prev => [message, ...prev.slice(0, 4)]);
-  };
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
 
-  const buyUpgrade = (type) => {
-    const upgrade = upgrades[type];
-    if (knight.gold < upgrade.cost) return;
+        .btn-primary:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
 
-    setKnight(k => ({ ...k, gold: k.gold - upgrade.cost }));
-    setUpgrades(u => ({
-      ...u,
-      [type]: {
-        ...u[type],
-        level: u[type].level + 1,
-        cost: Math.floor(u[type].cost * 1.5)
-      }
-    }));
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
 
-    if (type === 'weapon') {
-      setKnight(k => ({ ...k, damage: Math.floor(k.damage * upgrade.multiplier) }));
-    } else if (type === 'armor') {
-      setKnight(k => ({ ...k, maxHp: Math.floor(k.maxHp * upgrade.multiplier), hp: Math.floor(k.maxHp * upgrade.multiplier) }));
-    } else if (type === 'crit') {
-      setKnight(k => ({ ...k, critChance: k.critChance + 5 }));
-    } else if (type === 'blessing') {
-      setKnight(k => ({ ...k, damage: Math.floor(k.damage * upgrade.multiplier) }));
-    }
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
 
-    addLog(`🔼 ${type} 업그레이드 완료!`);
-  };
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
 
-  const buySkill = (type) => {
-    const skill = skills[type];
-    if (knight.gold < skill.cost) return;
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
 
-    setKnight(k => ({ ...k, gold: k.gold - skill.cost }));
-    setSkills(s => ({
-      ...s,
-      [type]: {
-        ...s[type],
-        level: s[type].level + 1,
-        cost: Math.floor(s[type].cost * 1.8)
-      }
-    }));
+        .currency-display {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            padding: 20px;
+            border-radius: 8px;
+            color: white;
+            margin-top: 16px;
+        }
 
-    addLog(`⚡ ${type} 스킬 강화!`);
-  };
+        .currency-amount {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 8px;
+        }
 
-  const useSkill = (type) => {
-    const skill = skills[type];
-    if (skill.level === 0 || skill.cooldown > 0 || !monster) return;
+        .jobs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
 
-    if (type === 'holyStrike') {
-      const damage = skill.damage * (1 + skill.level * 0.5);
-      setMonster(m => m ? { ...m, hp: Math.max(0, m.hp - damage) } : null);
-      addLog(`⚔️ 신성한 일격! ${Math.floor(damage)} 피해`);
-    } else if (type === 'divineShield') {
-      const heal = skill.reduction * (1 + skill.level);
-      setKnight(k => ({ ...k, hp: Math.min(k.maxHp, k.hp + heal) }));
-      addLog(`🛡️ 신성한 방패! ${heal} 회복`);
-    } else if (type === 'lightningBolt') {
-      const damage = skill.damage * (1 + skill.level * 0.7);
-      setMonster(m => m ? { ...m, hp: Math.max(0, m.hp - damage) } : null);
-      addLog(`⚡ 천벌의 번개! ${Math.floor(damage)} 피해`);
-    }
+        .job-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            transition: border-color 0.3s;
+        }
 
-    setSkills(s => ({
-      ...s,
-      [type]: { ...s[type], cooldown: s[type].maxCooldown }
-    }));
-  };
+        .job-card:hover {
+            border-color: #667eea;
+        }
 
-  return (
-    <div className="w-full h-screen bg-slate-900 text-white overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="bg-slate-800 border-b-2 border-amber-500 px-6 py-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Crown className="text-amber-400" size={32} />
-            <div>
-              <h1 className="text-2xl font-bold text-amber-400">GOD KNIGHT</h1>
-              <p className="text-sm text-slate-400">신성한 기사의 여정</p>
-            </div>
-          </div>
-          <div className="flex gap-6 items-center">
-            <div className="text-right">
-              <div className="text-xs text-slate-400">레벨</div>
-              <div className="text-xl font-bold text-amber-400">{knight.level}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-slate-400">골드</div>
-              <div className="text-xl font-bold text-yellow-400">{knight.gold}</div>
-            </div>
-          </div>
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .job-reward {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .badge-admin {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 2px solid #4299e1;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 2px solid #48bb78;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 2px solid #f56565;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .text-link {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 14px;
+            margin-top: 12px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .admin-panel {
+            border: 2px solid #fed7d7;
+            border-radius: 8px;
+            padding: 16px;
+            background: #fff5f5;
+        }
+
+        .user-list {
+            margin-top: 16px;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <!-- 로그인/회원가입 화면 -->
+    <div id="authScreen" class="auth-box card">
+        <h1 style="text-align: center;">💰 화폐 게임</h1>
+        <p style="text-align: center; color: #718096; margin-bottom: 24px;">일하고 돈을 벌어보세요!</p>
+        
+        <div class="input-group">
+            <label>이메일</label>
+            <input type="email" id="emailInput" placeholder="example@email.com">
         </div>
-      </div>
 
-      {/* Tab Navigation */}
-      <div className="bg-slate-800 border-b border-slate-700 px-6">
-        <div className="flex gap-1">
-          {['battle', 'upgrade', 'skills', 'stats'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-semibold transition-colors ${
-                activeTab === tab
-                  ? 'bg-slate-700 text-amber-400 border-b-2 border-amber-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-750'
-              }`}
-            >
-              {tab === 'battle' && '⚔️ 전투'}
-              {tab === 'upgrade' && '🔼 강화'}
-              {tab === 'skills' && '⚡ 스킬'}
-              {tab === 'stats' && '📊 통계'}
-            </button>
-          ))}
+        <div class="input-group">
+            <label>비밀번호</label>
+            <input type="password" id="passwordInput" placeholder="••••••••">
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {activeTab === 'battle' && (
-          <div className="max-w-6xl mx-auto space-y-6">
-            {/* Stage Info */}
-            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Award className="text-amber-400" size={24} />
-                  <span className="text-xl font-bold">스테이지 {currentStage}</span>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={autoProgress}
-                    onChange={(e) => setAutoProgress(e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm">자동 진행</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Battle Area */}
-            <div className="grid grid-cols-2 gap-6">
-              {/* Knight */}
-              <div className="bg-slate-800 border-2 border-blue-500 rounded-lg p-6">
-                <div className="text-center mb-4">
-                  <div className="text-6xl mb-2">🛡️</div>
-                  <h3 className="text-xl font-bold text-blue-400">신성한 기사</h3>
-                  <div className="text-sm text-slate-400">Lv.{knight.level}</div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="flex items-center gap-1">
-                        <Heart size={14} className="text-red-400" />
-                        체력
-                      </span>
-                      <span>{knight.hp} / {knight.maxHp}</span>
-                    </div>
-                    <div className="bg-slate-700 rounded-full h-3 overflow-hidden">
-                      <div 
-                        className="bg-red-500 h-full transition-all"
-                        style={{ width: `${(knight.hp / knight.maxHp) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>경험치</span>
-                      <span>{knight.exp} / {knight.expToNext}</span>
-                    </div>
-                    <div className="bg-slate-700 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className="bg-amber-400 h-full transition-all"
-                        style={{ width: `${(knight.exp / knight.expToNext) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
-                    <div className="bg-slate-700 rounded p-2">
-                      <div className="text-slate-400">공격력</div>
-                      <div className="font-bold text-orange-400">{knight.damage}</div>
-                    </div>
-                    <div className="bg-slate-700 rounded p-2">
-                      <div className="text-slate-400">치명타율</div>
-                      <div className="font-bold text-purple-400">{knight.critChance}%</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Monster */}
-              <div className="bg-slate-800 border-2 border-red-500 rounded-lg p-6">
-                {monster ? (
-                  <>
-                    <div className="text-center mb-4">
-                      <div className="text-6xl mb-2">{monster.isBoss ? '👹' : '😈'}</div>
-                      <h3 className="text-xl font-bold text-red-400">{monster.name}</h3>
-                      {monster.isBoss && <div className="text-xs text-amber-400">★ BOSS ★</div>}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="flex items-center gap-1">
-                            <Heart size={14} className="text-red-400" />
-                            체력
-                          </span>
-                          <span>{Math.max(0, monster.hp)} / {monster.maxHp}</span>
-                        </div>
-                        <div className="bg-slate-700 rounded-full h-3 overflow-hidden">
-                          <div 
-                            className="bg-red-500 h-full transition-all"
-                            style={{ width: `${(monster.hp / monster.maxHp) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
-                        <div className="bg-slate-700 rounded p-2">
-                          <div className="text-slate-400">공격력</div>
-                          <div className="font-bold text-red-400">{monster.damage}</div>
-                        </div>
-                        <div className="bg-slate-700 rounded p-2">
-                          <div className="text-slate-400">보상</div>
-                          <div className="font-bold text-yellow-400">{monster.goldReward}G</div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-slate-500">
-                    다음 적 생성 중...
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Skills */}
-            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
-              <h3 className="font-bold mb-3 flex items-center gap-2">
-                <Zap className="text-yellow-400" />
-                스킬
-              </h3>
-              <div className="grid grid-cols-3 gap-3">
-                {Object.entries(skills).map(([key, skill]) => (
-                  <button
-                    key={key}
-                    onClick={() => useSkill(key)}
-                    disabled={skill.level === 0 || skill.cooldown > 0}
-                    className={`p-3 rounded border-2 transition-all ${
-                      skill.level === 0
-                        ? 'bg-slate-700 border-slate-600 text-slate-500 cursor-not-allowed'
-                        : skill.cooldown > 0
-                        ? 'bg-slate-700 border-slate-600 cursor-not-allowed'
-                        : 'bg-slate-700 border-purple-500 hover:bg-purple-900 cursor-pointer'
-                    }`}
-                  >
-                    <div className="font-bold text-sm">{key}</div>
-                    <div className="text-xs text-slate-400">Lv.{skill.level}</div>
-                    {skill.cooldown > 0 && (
-                      <div className="text-xs text-amber-400 mt-1">{skill.cooldown}초</div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Battle Log */}
-            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
-              <h3 className="font-bold mb-2">전투 로그</h3>
-              <div className="space-y-1 text-sm font-mono">
-                {battleLog.map((log, i) => (
-                  <div key={i} className="text-slate-300">{log}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'upgrade' && (
-          <div className="max-w-4xl mx-auto space-y-4">
-            {Object.entries(upgrades).map(([key, upgrade]) => (
-              <div key={key} className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg capitalize flex items-center gap-2">
-                      {key === 'weapon' && <Sword className="text-orange-400" size={20} />}
-                      {key === 'armor' && <Shield className="text-blue-400" size={20} />}
-                      {key === 'crit' && <Star className="text-purple-400" size={20} />}
-                      {key === 'blessing' && <Crown className="text-amber-400" size={20} />}
-                      {key}
-                    </h3>
-                    <div className="text-sm text-slate-400">레벨 {upgrade.level}</div>
-                  </div>
-                  <button
-                    onClick={() => buyUpgrade(key)}
-                    disabled={knight.gold < upgrade.cost}
-                    className={`px-6 py-2 rounded font-bold transition-all ${
-                      knight.gold < upgrade.cost
-                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                        : 'bg-amber-600 hover:bg-amber-700 text-white'
-                    }`}
-                  >
-                    {upgrade.cost} 골드
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'skills' && (
-          <div className="max-w-4xl mx-auto space-y-4">
-            {Object.entries(skills).map(([key, skill]) => (
-              <div key={key} className="bg-slate-800 border-2 border-slate-700 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg capitalize">{key}</h3>
-                    <div className="text-sm text-slate-400">
-                      레벨 {skill.level} | 쿨다운: {skill.maxCooldown}초
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => buySkill(key)}
-                    disabled={knight.gold < skill.cost}
-                    className={`px-6 py-2 rounded font-bold transition-all ${
-                      knight.gold < skill.cost
-                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                        : 'bg-purple-600 hover:bg-purple-700 text-white'
-                    }`}
-                  >
-                    {skill.cost} 골드
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'stats' && (
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <TrendingUp className="text-green-400" />
-                통계
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-700 rounded p-4">
-                  <div className="text-slate-400 text-sm">총 처치</div>
-                  <div className="text-2xl font-bold text-red-400">{stats.totalKills}</div>
-                </div>
-                <div className="bg-slate-700 rounded p-4">
-                  <div className="text-slate-400 text-sm">총 획득 골드</div>
-                  <div className="text-2xl font-bold text-yellow-400">{stats.totalGold}</div>
-                </div>
-                <div className="bg-slate-700 rounded p-4">
-                  <div className="text-slate-400 text-sm">최고 스테이지</div>
-                  <div className="text-2xl font-bold text-purple-400">{stats.highestStage}</div>
-                </div>
-                <div className="bg-slate-700 rounded p-4">
-                  <div className="text-slate-400 text-sm">플레이 시간</div>
-                  <div className="text-2xl font-bold text-blue-400">{Math.floor(stats.playTime / 60)}분</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 border-2 border-slate-700 rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Award className="text-amber-400" />
-                업적
-              </h2>
-              <div className="space-y-3">
-                {achievements.map(ach => (
-                  <div 
-                    key={ach.id}
-                    className={`p-4 rounded border-2 ${
-                      ach.completed 
-                        ? 'bg-amber-900 border-amber-500' 
-                        : 'bg-slate-700 border-slate-600'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-bold">{ach.name}</h3>
-                        <p className="text-sm text-slate-400">{ach.desc}</p>
-                      </div>
-                      <div className="text-right">
-                        {ach.completed ? (
-                          <span className="text-amber-400 font-bold">✓ 완료</span>
-                        ) : (
-                          <span className="text-yellow-400 font-bold">+{ach.reward}G</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        <button class="btn-primary" id="authButton" onclick="handleAuth()">로그인</button>
+        <button class="text-link" onclick="toggleAuthMode()">계정이 없으신가요? 회원가입</button>
+        
+        <div id="authError" class="alert alert-error hidden"></div>
     </div>
-  );
-}
+
+    <!-- 메인 게임 화면 -->
+    <div id="mainScreen" class="hidden container">
+        <!-- 헤더 -->
+        <div class="card">
+            <div class="header">
+                <div>
+                    <h2 id="userEmail"></h2>
+                    <span id="adminBadge" class="badge badge-admin hidden">🛡️ 관리자</span>
+                </div>
+                <button class="btn-danger" onclick="logout()">로그아웃</button>
+            </div>
+
+            <div class="currency-display">
+                <div style="opacity: 0.9;">보유 화폐</div>
+                <div class="currency-amount" id="currencyDisplay">0 루프</div>
+            </div>
+        </div>
+
+        <!-- 일 목록 -->
+        <div class="card">
+            <h3>💼 일 목록</h3>
+            <div class="jobs-grid" id="jobsGrid"></div>
+            <div id="workingAlert" class="alert alert-info hidden"></div>
+        </div>
+
+        <!-- 관리자 패널 -->
+        <div id="adminPanel" class="card hidden">
+            <h3>🛡️ 관리자 패널</h3>
+            <div class="admin-panel">
+                <h4 style="margin-bottom: 12px;">전체 사용자 관리</h4>
+                <div id="usersList" class="user-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpcOJfXhipqXWYAvDaQpgFSFzq9N5IT5c",
+            authDomain: "testing123-bbda8.firebaseapp.com",
+            databaseURL: "https://testing123-bbda8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "testing123-bbda8",
+            storageBucket: "testing123-bbda8.firebasestorage.app",
+            messagingSenderId: "511649892672",
+            appId: "1:511649892672:web:3f976bd9fc68aefb9852a5",
+            measurementId: "G-3NRXDVKRCR"
+        };
+
+        // Firebase 초기화
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        // 전역 변수
+        let currentUser = null;
+        let isLoginMode = true;
+        let working = null;
+        let currentJobs = [];
+
+        // 화폐 단위 변환
+        function formatCurrency(amount) {
+            const units = [
+                { name: '영', value: 1e21 },
+                { name: '제네시스', value: 1e18 },
+                { name: '핵', value: 1e15 },
+                { name: '천', value: 1e12 },
+                { name: '성', value: 1e9 },
+                { name: '광', value: 1e6 },
+                { name: '사인', value: 1e3 },
+                { name: '루프', value: 1 }
+            ];
+
+            let result = [];
+            let remaining = amount;
+
+            for (let unit of units) {
+                if (remaining >= unit.value) {
+                    const count = Math.floor(remaining / unit.value);
+                    result.push(`${count.toLocaleString()} ${unit.name}`);
+                    remaining %= unit.value;
+                }
+            }
+
+            return result.length > 0 ? result.join(' ') : '0 루프';
+        }
+
+        // 인증 상태 감지
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                const userRef = ref(database, `users/${user.uid}`);
+                const snapshot = await get(userRef);
+                
+                if (!snapshot.exists()) {
+                    // 새 사용자 초기화
+                    await set(userRef, {
+                        email: user.email,
+                        currency: 0,
+                        isAdmin: false,
+                        createdAt: Date.now()
+                    });
+                }
+
+                showMainScreen();
+                loadUserData();
+                loadJobs();
+            } else {
+                currentUser = null;
+                document.getElementById('authScreen').classList.remove('hidden');
+                document.getElementById('mainScreen').classList.add('hidden');
+            }
+        });
+
+        // 회원가입/로그인
+        window.handleAuth = async () => {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            const button = document.getElementById('authButton');
+            const errorDiv = document.getElementById('authError');
+
+            if (!email || !password) {
+                showError('이메일과 비밀번호를 입력해주세요.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('비밀번호는 최소 6자 이상이어야 합니다.');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '처리 중...';
+            errorDiv.classList.add('hidden');
+
+            try {
+                if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+            } catch (error) {
+                let message = '오류가 발생했습니다.';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = '이미 사용 중인 이메일입니다.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = '유효하지 않은 이메일 형식입니다.';
+                } else if (error.code === 'auth/wrong-password') {
+                    message = '비밀번호가 올바르지 않습니다.';
+                } else if (error.code === 'auth/user-not-found') {
+                    message = '존재하지 않는 사용자입니다.';
+                } else if (error.code === 'auth/weak-password') {
+                    message = '비밀번호가 너무 약합니다.';
+                }
+                showError(message);
+                button.disabled = false;
+                button.textContent = isLoginMode ? '로그인' : '회원가입';
+            }
+        };
+
+        function showError(message) {
+            const errorDiv = document.getElementById('authError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        // 인증 모드 전환
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            const button = document.getElementById('authButton');
+            const linkButton = document.querySelector('.text-link');
+            
+            button.textContent = isLoginMode ? '로그인' : '회원가입';
+            linkButton.textContent = isLoginMode 
+                ? '계정이 없으신가요? 회원가입' 
+                : '이미 계정이 있으신가요? 로그인';
+            
+            document.getElementById('authError').classList.add('hidden');
+        };
+
+        // 메인 화면 표시
+        async function showMainScreen() {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('mainScreen').classList.remove('hidden');
+            document.getElementById('userEmail').textContent = currentUser.email;
+        }
+
+        // 사용자 데이터 로드
+        async function loadUserData() {
+            const userRef = ref(database, `users/${currentUser.uid}`);
+            
+            onValue(userRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('currencyDisplay').textContent = formatCurrency(data.currency || 0);
+                    
+                    if (data.isAdmin) {
+                        document.getElementById('adminBadge').classList.remove('hidden');
+                        document.getElementById('adminPanel').classList.remove('hidden');
+                        loadAllUsers();
+                    }
+                }
+            });
+        }
+
+        // 일 목록 로드
+        async function loadJobs() {
+            const jobsRef = ref(database, 'jobs');
+            
+            onValue(jobsRef, (snapshot) => {
+                const data = snapshot.val();
+                currentJobs = [];
+                
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        currentJobs.push({ id: key, ...data[key] });
+                    });
+                } else {
+                    // 기본 일 목록 생성
+                    const defaultJobs = {
+                        easy: { name: '심부름', difficulty: '쉬움', reward: 100, time: 3 },
+                        medium: { name: '배달', difficulty: '보통', reward: 500, time: 5 },
+                        hard: { name: '경비', difficulty: '어려움', reward: 2000, time: 10 },
+                        expert: { name: '해킹', difficulty: '전문가', reward: 10000, time: 20 }
+                    };
+                    set(jobsRef, defaultJobs);
+                }
+                
+                renderJobs();
+            });
+        }
+
+        // 일 목록 렌더링
+        function renderJobs() {
+            const grid = document.getElementById('jobsGrid');
+            grid.innerHTML = currentJobs.map(job => `
+                <div class="job-card">
+                    <div class="job-header">
+                        <div>
+                            <h4 style="font-size: 18px; font-weight: 600;">${job.name}</h4>
+                            <p style="color: #718096; font-size: 14px;">${job.difficulty}</p>
+                        </div>
+                        <span class="job-reward">+${job.reward.toLocaleString()} 루프</span>
+                    </div>
+                    <p style="color: #a0aec0; font-size: 14px; margin-bottom: 12px;">⏱️ ${job.time}초 소요</p>
+                    <button 
+                        class="btn-primary" 
+                        onclick="startJob('${job.id}')"
+                        ${working ? 'disabled' : ''}
+                    >
+                        ${working?.id === job.id ? '작업 중...' : '시작하기'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 일 시작
+        window.startJob = async (jobId) => {
+            const job = currentJobs.find(j => j.id === jobId);
+            if (!job || working) return;
+
+            working = { ...job, startTime: Date.now() };
+            
+            const alert = document.getElementById('workingAlert');
+            alert.textContent = `🔄 ${job.name} 진행 중... (${job.time}초 후 완료)`;
+            alert.classList.remove('hidden');
+
+            renderJobs();
+
+            setTimeout(async () => {
+                const userRef = ref(database, `users/${currentUser.uid}`);
+                const snapshot = await get(userRef);
+                const currentCurrency = snapshot.val().currency || 0;
+                
+                await update(userRef, {
+                    currency: currentCurrency + job.reward
+                });
+
+                working = null;
+                alert.classList.add('hidden');
+                renderJobs();
+                
+                showNotification(`${job.name} 완료! +${job.reward} 루프`);
+            }, job.time * 1000);
+        };
+
+        // 모든 사용자 로드 (관리자용)
+        async function loadAllUsers() {
+            const usersRef = ref(database, 'users');
+            
+            onValue(usersRef, (snapshot) => {
+                const data = snapshot.val();
+                const usersList = document.getElementById('usersList');
+                
+                if (!data) {
+                    usersList.innerHTML = '<p style="color: #a0aec0;">등록된 사용자가 없습니다.</p>';
+                    return;
+                }
+                
+                usersList.innerHTML = Object.keys(data).map(uid => {
+                    const user = data[uid];
+                    return `
+                        <div class="user-item">
+                            <div class="user-info">
+                                <strong>${user.email}</strong>
+                                <p style="color: #718096; font-size: 14px;">${formatCurrency(user.currency || 0)}</p>
+                            </div>
+                            <div class="user-controls">
+                                <button class="btn-secondary btn-small" onclick="modifyCurrency('${uid}', 1000)">+1000</button>
+                                <button class="btn-secondary btn-small" onclick="modifyCurrency('${uid}', -1000)">-1000</button>
+                                ${!user.isAdmin ? `<button class="btn-secondary btn-small" onclick="toggleAdmin('${uid}', true)">관리자로</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            });
+        }
+
+        // 화폐 수정 (관리자용)
+        window.modifyCurrency = async (uid, amount) => {
+            const userRef = ref(database, `users/${uid}`);
+            const snapshot = await get(userRef);
+            const currentCurrency = snapshot.val().currency || 0;
+            const newCurrency = Math.max(0, currentCurrency + amount);
+            
+            await update(userRef, { currency: newCurrency });
+            showNotification(`화폐가 ${amount > 0 ? '+' : ''}${amount} 루프 변경되었습니다.`);
+        };
+
+        // 관리자 권한 토글
+        window.toggleAdmin = async (uid, isAdmin) => {
+            const userRef = ref(database, `users/${uid}`);
+            await update(userRef, { isAdmin });
+            showNotification(`관리자 권한이 ${isAdmin ? '부여' : '제거'}되었습니다.`);
+        };
+
+        // 알림
+        function showNotification(message) {
+            alert(message);
+        }
+
+        // 로그아웃
+        window.logout = async () => {
+            await signOut(auth);
+            document.getElementById('emailInput').value = '';
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('adminBadge').classList.add('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+        };
+    </script>
+</body>
+</html>

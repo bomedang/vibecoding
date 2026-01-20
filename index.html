@@ -271,11 +271,34 @@
         window.onload = function () {
             document.getElementById('currencyTableModal').style.display = 'none';
         };
+
+        // 한글 이름 깨짐 방지용(UTF-8 디코딩)
+        function decodeJwtName(str) {
+            try {
+                return decodeURIComponent(escape(str));
+            } catch { return str; }
+        }
+        // 닉네임 저장/불러오기 (localStorage)
+        function getNickname(email) {
+            return localStorage.getItem('nickname_' + email) || '';
+        }
+        function setNickname(email, nick) {
+            localStorage.setItem('nickname_' + email, nick);
+        }
         // 구글 로그인 콜백
         function onGoogleSignIn(response) {
             const credential = response.credential;
             const payload = JSON.parse(atob(credential.split('.')[1]));
-            document.getElementById('user-info').innerHTML = `<b>${payload.name}</b> (${payload.email}) <button onclick='logout()'>로그아웃</button>`;
+            const name = decodeJwtName(payload.name);
+            const email = payload.email;
+            let nickname = getNickname(email);
+            let nickHtml = '';
+            if (nickname) {
+                nickHtml = `<b>${nickname}</b> <span style='color:#aaa;font-size:0.95em;'>(${name}, ${email})</span>`;
+            } else {
+                nickHtml = `<b>${name}</b> (${email}) <button id='setNickBtn' style='margin-left:8px;padding:2px 10px;font-size:0.95em;border-radius:6px;border:none;background:#eebbc3;color:#232946;cursor:pointer;'>닉네임 설정</button>`;
+            }
+            document.getElementById('user-info').innerHTML = nickHtml + " <button onclick='logout()' style='margin-left:10px;'>로그아웃</button>";
             document.getElementById('user-info').style.display = 'block';
             document.querySelector('.g_id_signin').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'flex';
@@ -289,6 +312,21 @@
             document.getElementById('closeCurrencyTable').onclick = function () {
                 document.getElementById('currencyTableModal').style.display = 'none';
             };
+            // 닉네임 설정 버튼 이벤트
+            setTimeout(() => {
+                const btn = document.getElementById('setNickBtn');
+                if (btn) {
+                    btn.onclick = function () {
+                        const newNick = prompt('사용할 닉네임을 입력하세요 (최대 12자)', name);
+                        if (newNick && newNick.length <= 12) {
+                            setNickname(email, newNick);
+                            onGoogleSignIn(response); // 새로고침
+                        } else if (newNick) {
+                            alert('닉네임은 12자 이하로 입력하세요.');
+                        }
+                    };
+                }
+            }, 100);
         }
         function logout() {
             location.reload();

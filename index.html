@@ -267,9 +267,15 @@
         </div>
     </div>
     <script>
-        // 페이지 진입 시 모달 항상 숨김
+        // 페이지 진입 시 모달 항상 숨김 및 자동로그인 시도
         window.onload = function () {
             document.getElementById('currencyTableModal').style.display = 'none';
+            // 자동로그인 시도
+            const savedCredential = localStorage.getItem('google_credential');
+            if (savedCredential) {
+                // 구글 One Tap credential 구조와 동일하게 가짜 response 객체 생성
+                onGoogleSignIn({ credential: savedCredential });
+            }
         };
 
         // 한글 이름 깨짐 방지용(UTF-8 디코딩)
@@ -288,6 +294,8 @@
         // 구글 로그인 콜백
         function onGoogleSignIn(response) {
             const credential = response.credential;
+            // 자동로그인용 credential 저장
+            localStorage.setItem('google_credential', credential);
             const payload = JSON.parse(atob(credential.split('.')[1]));
             const name = decodeJwtName(payload.name);
             const email = payload.email;
@@ -329,6 +337,7 @@
             }, 100);
         }
         function logout() {
+            localStorage.removeItem('google_credential');
             location.reload();
         }
         // 메뉴 전환

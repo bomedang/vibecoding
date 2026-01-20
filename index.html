@@ -4,544 +4,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>화폐 게임</title>
+    <title>종합 게임</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #232946;
+            color: #fff;
+            margin: 0;
             min-height: 100vh;
-            padding: 20px;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 600px;
+            margin: 40px auto;
+            background: #16161a;
+            border-radius: 16px;
+            padding: 32px 24px;
+            box-shadow: 0 4px 24px #0002;
         }
 
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        h1 {
+            text-align: center;
+            margin-bottom: 32px;
         }
 
-        .auth-box {
-            max-width: 400px;
-            margin: 100px auto;
+        .g_id_signin {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 24px;
         }
 
-        h1,
-        h2,
-        h3 {
-            color: #2d3748;
-            margin-bottom: 16px;
+        #user-info {
+            text-align: center;
+            margin-bottom: 24px;
         }
 
-        .input-group {
-            margin-bottom: 16px;
+        .main-menu {
+            display: flex;
+            justify-content: space-around;
+            margin: 32px 0;
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #4a5568;
-            font-weight: 500;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        button {
-            padding: 12px 24px;
+        .main-menu button {
+            background: #eebbc3;
+            color: #232946;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-            width: 100%;
-        }
-
-        .btn-primary:hover {
-            background: #5a67d8;
-        }
-
-        .btn-primary:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #2d3748;
-        }
-
-        .btn-secondary:hover {
-            background: #cbd5e0;
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #e53e3e;
-        }
-
-        .currency-display {
-            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
-            padding: 20px;
-            border-radius: 8px;
-            color: white;
-            margin-top: 16px;
-        }
-
-        .currency-amount {
-            font-size: 24px;
+            padding: 18px 32px;
+            font-size: 20px;
             font-weight: bold;
-            margin-top: 8px;
-        }
-
-        .jobs-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 16px;
-            margin-top: 16px;
-        }
-
-        .job-card {
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-            transition: border-color 0.3s;
-        }
-
-        .job-card:hover {
-            border-color: #667eea;
-        }
-
-        .job-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 12px;
-        }
-
-        .job-reward {
-            background: #c6f6d5;
-            color: #22543d;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-top: 8px;
-        }
-
-        .badge-admin {
-            background: #fed7d7;
-            color: #742a2a;
-        }
-
-        .alert {
-            padding: 16px;
-            border-radius: 8px;
-            margin-top: 16px;
-        }
-
-        .alert-info {
-            background: #bee3f8;
-            color: #2c5282;
-            border: 2px solid #4299e1;
-        }
-
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-            border: 2px solid #48bb78;
-        }
-
-        .alert-error {
-            background: #fed7d7;
-            color: #742a2a;
-            border: 2px solid #f56565;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .text-link {
-            color: #667eea;
             cursor: pointer;
-            text-decoration: underline;
-            background: none;
-            border: none;
-            padding: 0;
-            font-size: 14px;
-            margin-top: 12px;
-            width: 100%;
-            text-align: center;
+            transition: background 0.2s;
         }
 
-        .hidden {
+        .main-menu button:hover {
+            background: #ffd6e0;
+        }
+
+        .currency {
+            text-align: center;
+            margin: 24px 0 0 0;
+            font-size: 18px;
+        }
+
+        .section {
             display: none;
+            margin-top: 32px;
         }
 
-        .admin-panel {
-            border: 2px solid #fed7d7;
-            border-radius: 8px;
-            padding: 16px;
-            background: #fff5f5;
-        }
-
-        .user-list {
-            margin-top: 16px;
-        }
-
-        .user-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-
-        .user-info {
-            flex: 1;
-        }
-
-        .user-controls {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 14px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #4a5568;
+        .section.active {
+            display: block;
         }
     </style>
 </head>
 
 <body>
-    <!-- 로그인/회원가입 화면 (리듬게임용) -->
-    <div id="authScreen" class="auth-box card">
-        <h1 style="text-align: center;">리듬게임</h1>
-        <div class="input-group">
-            <label>이메일</label>
-            <input type="email" id="emailInput" placeholder="example@email.com">
+    <div class="container">
+        <h1>🎮 종합 게임</h1>
+        <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+            data-callback="onGoogleSignIn" data-auto_prompt="false">
         </div>
-        <div class="input-group">
-            <label>비밀번호</label>
-            <input type="password" id="passwordInput" placeholder="••••••••">
+        <div class="g_id_signin" data-type="standard"></div>
+        <div id="user-info" style="display:none;"></div>
+        <div class="currency" id="currencyDisplay" style="display:none;"></div>
+        <div class="main-menu" id="mainMenu" style="display:none;">
+            <button onclick="showSection('shop')">상점</button>
+            <button onclick="showSection('minigame')">미니게임</button>
+            <button onclick="showSection('chat')">채팅</button>
         </div>
-        <button class="btn-primary" id="authButton" onclick="handleAuth()">로그인</button>
-        <button class="text-link" onclick="toggleAuthMode()">계정이 없으신가요? 회원가입</button>
-        <div id="authError" class="alert alert-error hidden"></div>
-    </div>
-    <!-- 리듬게임 섹션 -->
-    <div id="rhythmGameSection" class="container card" style="margin-top:40px; max-width:600px;">
-        <h2 style="text-align:center;">🎵 리듬게임 (유튜브 오디오 분석)</h2>
-        <!-- 유튜브 링크 입력 -->
-        <input type="text" id="rhythm-youtube-link" placeholder="유튜브 링크를 입력하세요" style="width:80%;padding:8px;">
-        <button id="rhythm-analyze-btn">오디오 분석</button>
-        <div id="rhythm-analyze-status" style="margin:10px 0;"></div>
-        <!-- 리듬게임 영역 -->
-        <div id="rhythm-game-area" style="display:none;">
-            <div id="rhythm-notes"
-                style="height:300px;background:#111;border-radius:8px;margin-bottom:20px;position:relative;overflow:hidden;">
-            </div>
-            <button id="rhythm-start-btn">게임 시작</button>
-            <div id="rhythm-score" style="margin-top:20px;font-size:20px;"></div>
+        <div id="shop" class="section">
+            <h2>상점</h2>
+            <p>아이템 구매 기능 예정</p>
         </div>
-        <!-- 어드민만 보이는 보상 지급 UI -->
-        <div id="adminRewardPanel" style="display:none; margin-top:30px;">
-            <h3>🛡️ 어드민: 사용자 보상 지급</h3>
-            <input type="email" id="reward-user-email" placeholder="사용자 이메일" style="width:60%;padding:8px;">
-            <input type="number" id="reward-amount" placeholder="지급 금액" style="width:30%;padding:8px;">
-            <button id="give-reward-btn">지급</button>
-            <div id="reward-status" style="margin-top:10px;"></div>
+        <div id="minigame" class="section">
+            <h2>미니게임</h2>
+            <p>미니게임 목록 및 실행 예정</p>
+        </div>
+        <div id="chat" class="section">
+            <h2>채팅</h2>
+            <p>채팅 기능 예정</p>
         </div>
     </div>
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        // Firebase 설정
-        const firebaseConfig = {
-            apiKey: "AIzaSyDpcOJfXhipqXWYAvDaQpgFSFzq9N5IT5c",
-            authDomain: "testing123-bbda8.firebaseapp.com",
-            databaseURL: "https://testing123-bbda8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "testing123-bbda8",
-            storageBucket: "testing123-bbda8.firebasestorage.app",
-            messagingSenderId: "511649892672",
-            appId: "1:511649892672:web:3f976bd9fc68aefb9852a5",
-            measurementId: "G-3NRXDVKRCR"
-        };
-
-        // Firebase 초기화
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const database = getDatabase(app);
-
-        let currentUser = null;
-        let isLoginMode = true;
-        let isAdmin = false;
-
-        // 인증 상태 감지
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                const userRef = ref(database, `users/${user.uid}`);
-                const snapshot = await get(userRef);
-                if (!snapshot.exists()) {
-                    await set(userRef, {
-                        email: user.email,
-                        currency: 0,
-                        isAdmin: false,
-                        createdAt: Date.now()
-                    });
-                }
-                // 어드민 여부 확인
-                onValue(userRef, (snap) => {
-                    const data = snap.val();
-                    isAdmin = !!data?.isAdmin;
-                    document.getElementById('adminRewardPanel').style.display = isAdmin ? 'block' : 'none';
-                });
-                document.getElementById('authScreen').classList.add('hidden');
-                document.getElementById('rhythmGameSection').classList.remove('hidden');
-            } else {
-                currentUser = null;
-                isAdmin = false;
-                document.getElementById('authScreen').classList.remove('hidden');
-                document.getElementById('rhythmGameSection').classList.add('hidden');
-            }
-        });
-
-        // 회원가입/로그인
-        window.handleAuth = async () => {
-            const email = document.getElementById('emailInput').value;
-            const password = document.getElementById('passwordInput').value;
-            const button = document.getElementById('authButton');
-            const errorDiv = document.getElementById('authError');
-            if (!email || !password) {
-                showError('이메일과 비밀번호를 입력해주세요.');
-                return;
-            }
-            if (password.length < 6) {
-                showError('비밀번호는 최소 6자 이상이어야 합니다.');
-                return;
-            }
-            button.disabled = true;
-            button.textContent = '처리 중...';
-            errorDiv.classList.add('hidden');
-            try {
-                if (isLoginMode) {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } else {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                }
-            } catch (error) {
-                let message = '오류가 발생했습니다.';
-                if (error.code === 'auth/email-already-in-use') {
-                    message = '이미 사용 중인 이메일입니다.';
-                } else if (error.code === 'auth/invalid-email') {
-                    message = '유효하지 않은 이메일 형식입니다.';
-                } else if (error.code === 'auth/wrong-password') {
-                    message = '비밀번호가 올바르지 않습니다.';
-                } else if (error.code === 'auth/user-not-found') {
-                    message = '존재하지 않는 사용자입니다.';
-                } else if (error.code === 'auth/weak-password') {
-                    message = '비밀번호가 너무 약합니다.';
-                }
-                showError(message);
-                button.disabled = false;
-                button.textContent = isLoginMode ? '로그인' : '회원가입';
-            }
-        };
-        function showError(message) {
-            const errorDiv = document.getElementById('authError');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
+    <script>
+        // 구글 로그인 콜백
+        function onGoogleSignIn(response) {
+            const credential = response.credential;
+            const payload = JSON.parse(atob(credential.split('.')[1]));
+            document.getElementById('user-info').innerHTML = `<b>${payload.name}</b> (${payload.email}) <button onclick='logout()'>로그아웃</button>`;
+            document.getElementById('user-info').style.display = 'block';
+            document.querySelector('.g_id_signin').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'flex';
+            document.getElementById('currencyDisplay').style.display = 'block';
+            // 임시: 로그인 시 보유 제화 표시(샘플)
+            updateCurrencyDisplay(1234567890123);
         }
-        // 인증 모드 전환
-        window.toggleAuthMode = () => {
-            isLoginMode = !isLoginMode;
-            const button = document.getElementById('authButton');
-            const linkButton = document.querySelector('.text-link');
-            button.textContent = isLoginMode ? '로그인' : '회원가입';
-            linkButton.textContent = isLoginMode
-                ? '계정이 없으신가요? 회원가입'
-                : '이미 계정이 있으신가요? 로그인';
-            document.getElementById('authError').classList.add('hidden');
-        };
-
-        // 오디오 분석 버튼 클릭 (샘플)
-        document.getElementById('rhythm-analyze-btn').onclick = function () {
-            const link = document.getElementById('rhythm-youtube-link').value.trim();
-            if (!link) {
-                document.getElementById('rhythm-analyze-status').innerText = '유튜브 링크를 입력하세요.';
-                return;
-            }
-            document.getElementById('rhythm-analyze-status').innerText = '오디오 분석 중... (샘플 데이터 사용)';
-            setTimeout(() => {
-                document.getElementById('rhythm-analyze-status').innerText = '분석 완료! 게임을 시작하세요.';
-                document.getElementById('rhythm-game-area').style.display = 'block';
-            }, 1500);
-        };
-
-        // 샘플 리듬 데이터
-        const rhythmSampleNotes = [500, 1200, 1800, 2500, 3200, 4000, 4700, 5400]; // ms 단위
-
-        document.getElementById('rhythm-start-btn').onclick = function () {
-            rhythmStartGame();
-        };
-
-        // 게임 클리어 시 보상 지급
-        function rhythmStartGame() {
-            const notesDiv = document.getElementById('rhythm-notes');
-            notesDiv.innerHTML = '';
-            let score = 0;
-            let noteIdx = 0;
-            let startTime = Date.now();
-            document.getElementById('rhythm-score').innerText = '';
-            document.getElementById('rhythm-start-btn').disabled = true;
-            function spawnNote(time) {
-                const note = document.createElement('div');
-                note.className = 'note';
-                note.style.width = '40px';
-                note.style.height = '40px';
-                note.style.background = '#f33';
-                note.style.borderRadius = '50%';
-                note.style.position = 'absolute';
-                note.style.left = '50%';
-                note.style.transform = 'translateX(-50%)';
-                note.style.top = '0px';
-                notesDiv.appendChild(note);
-                let y = 0;
-                const interval = setInterval(() => {
-                    y += 5;
-                    note.style.top = y + 'px';
-                    if (y > 260) {
-                        clearInterval(interval);
-                        notesDiv.removeChild(note);
-                    }
-                }, 16);
-                note.onclick = function () {
-                    if (y > 240 && y < 280) {
-                        score++;
-                        document.getElementById('rhythm-score').innerText = `점수: ${score}`;
-                        note.style.background = '#0f0';
-                    }
-                };
-            }
-            function nextNote() {
-                if (noteIdx >= rhythmSampleNotes.length) {
-                    document.getElementById('rhythm-start-btn').disabled = false;
-                    document.getElementById('rhythm-score').innerText += '  게임 끝!';
-                    // 게임 클리어 시 보상 지급
-                    if (currentUser) {
-                        const userRef = ref(database, `users/${currentUser.uid}`);
-                        get(userRef).then(snap => {
-                            const data = snap.val();
-                            const newCurrency = (data?.currency || 0) + 1000;
-                            update(userRef, { currency: newCurrency });
-                            alert('게임 클리어! +1000 보상 지급');
-                        });
-                    }
-                    return;
-                }
-                const now = Date.now();
-                const delay = rhythmSampleNotes[noteIdx] - (now - startTime);
-                setTimeout(() => {
-                    spawnNote(rhythmSampleNotes[noteIdx]);
-                    noteIdx++;
-                    nextNote();
-                }, Math.max(0, delay));
-            }
-            nextNote();
+        function logout() {
+            location.reload();
         }
-
-        // 어드민만 사용자 보상 지급
-        document.getElementById('give-reward-btn').onclick = async function () {
-            const email = document.getElementById('reward-user-email').value.trim();
-            const amount = parseInt(document.getElementById('reward-amount').value, 10);
-            const statusDiv = document.getElementById('reward-status');
-            if (!email || isNaN(amount)) {
-                statusDiv.innerText = '이메일과 금액을 입력하세요.';
-                return;
-            }
-            // 이메일로 사용자 찾기
-            const usersRef = ref(database, 'users');
-            const snap = await get(usersRef);
-            let found = false;
-            if (snap.exists()) {
-                const users = snap.val();
-                for (const uid in users) {
-                    if (users[uid].email === email) {
-                        const userRef = ref(database, `users/${uid}`);
-                        const userSnap = await get(userRef);
-                        const userData = userSnap.val();
-                        const newCurrency = (userData?.currency || 0) + amount;
-                        await update(userRef, { currency: newCurrency });
-                        statusDiv.innerText = `지급 완료! (${email} +${amount})`;
-                        found = true;
-                        break;
-                    }
+        // 메뉴 전환
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(section).classList.add('active');
+        }
+        // 제화 단위 변환 함수
+        function formatCurrency(amount) {
+            const units = [
+                { name: '영', value: 1e24 },
+                { name: '제네시스', value: 1e21 },
+                { name: '핵', value: 1e18 },
+                { name: '천', value: 1e15 },
+                { name: '성', value: 1e12 },
+                { name: '광', value: 1e9 },
+                { name: '사인', value: 1e6 },
+                { name: '루프', value: 1 }
+            ];
+            let result = [];
+            let remaining = amount;
+            for (let unit of units) {
+                if (remaining >= unit.value) {
+                    const count = Math.floor(remaining / unit.value);
+                    result.push(`${count.toLocaleString()} ${unit.name}`);
+                    remaining %= unit.value;
                 }
             }
-            if (!found) statusDiv.innerText = '사용자를 찾을 수 없습니다.';
-        };
-
-        // 로그아웃
-        window.logout = async () => {
-            await signOut(auth);
-        };
+            return result.length > 0 ? result.join(' ') : '0 루프';
+        }
+        function updateCurrencyDisplay(amount) {
+            document.getElementById('currencyDisplay').innerText = '보유 제화: ' + formatCurrency(amount);
+        }
     </script>
-
 </body>
+
+</html>
+<!DOCTYPE html>
+
 
 </html>

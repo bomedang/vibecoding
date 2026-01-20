@@ -266,35 +266,24 @@
 </head>
 
 <body>
-    <!-- 로그인/회원가입 화면 -->
+    <!-- 로그인/회원가입 화면 (리듬게임용) -->
     <div id="authScreen" class="auth-box card">
-        <h1 style="text-align: center;">💰 화폐 게임</h1>
-        <p style="text-align: center; color: #718096; margin-bottom: 24px;">일하고 돈을 벌어보세요!</p>
-
+        <h1 style="text-align: center;">리듬게임</h1>
         <div class="input-group">
             <label>이메일</label>
             <input type="email" id="emailInput" placeholder="example@email.com">
         </div>
-
         <div class="input-group">
             <label>비밀번호</label>
             <input type="password" id="passwordInput" placeholder="••••••••">
         </div>
-
         <button class="btn-primary" id="authButton" onclick="handleAuth()">로그인</button>
         <button class="text-link" onclick="toggleAuthMode()">계정이 없으신가요? 회원가입</button>
-
         <div id="authError" class="alert alert-error hidden"></div>
     </div>
-    <!-- 리듬게임 섹션 (별도) -->
+    <!-- 리듬게임 섹션 -->
     <div id="rhythmGameSection" class="container card" style="margin-top:40px; max-width:600px;">
         <h2 style="text-align:center;">🎵 리듬게임 (유튜브 오디오 분석)</h2>
-        <!-- 구글 로그인 버튼 -->
-        <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-            data-callback="onRhythmGoogleSignIn" data-auto_prompt="false">
-        </div>
-        <div class="g_id_signin" data-type="standard"></div>
-        <div id="rhythm-user-info" style="display:none; margin-bottom:20px;"></div>
         <!-- 유튜브 링크 입력 -->
         <input type="text" id="rhythm-youtube-link" placeholder="유튜브 링크를 입력하세요" style="width:80%;padding:8px;">
         <button id="rhythm-analyze-btn">오디오 분석</button>
@@ -307,18 +296,128 @@
             <button id="rhythm-start-btn">게임 시작</button>
             <div id="rhythm-score" style="margin-top:20px;font-size:20px;"></div>
         </div>
+        <!-- 어드민만 보이는 보상 지급 UI -->
+        <div id="adminRewardPanel" style="display:none; margin-top:30px;">
+            <h3>🛡️ 어드민: 사용자 보상 지급</h3>
+            <input type="email" id="reward-user-email" placeholder="사용자 이메일" style="width:60%;padding:8px;">
+            <input type="number" id="reward-amount" placeholder="지급 금액" style="width:30%;padding:8px;">
+            <button id="give-reward-btn">지급</button>
+            <div id="reward-status" style="margin-top:10px;"></div>
+        </div>
     </div>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script>
-        // 구글 로그인 콜백 (리듬게임용)
-        function onRhythmGoogleSignIn(response) {
-            const userInfo = document.getElementById('rhythm-user-info');
-            const credential = response.credential;
-            const payload = JSON.parse(atob(credential.split('.')[1]));
-            userInfo.innerHTML = `<b>${payload.name}</b> (${payload.email})`;
-            userInfo.style.display = 'block';
-            document.querySelector('#rhythmGameSection .g_id_signin').style.display = 'none';
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpcOJfXhipqXWYAvDaQpgFSFzq9N5IT5c",
+            authDomain: "testing123-bbda8.firebaseapp.com",
+            databaseURL: "https://testing123-bbda8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "testing123-bbda8",
+            storageBucket: "testing123-bbda8.firebasestorage.app",
+            messagingSenderId: "511649892672",
+            appId: "1:511649892672:web:3f976bd9fc68aefb9852a5",
+            measurementId: "G-3NRXDVKRCR"
+        };
+
+        // Firebase 초기화
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        let currentUser = null;
+        let isLoginMode = true;
+        let isAdmin = false;
+
+        // 인증 상태 감지
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                const userRef = ref(database, `users/${user.uid}`);
+                const snapshot = await get(userRef);
+                if (!snapshot.exists()) {
+                    await set(userRef, {
+                        email: user.email,
+                        currency: 0,
+                        isAdmin: false,
+                        createdAt: Date.now()
+                    });
+                }
+                // 어드민 여부 확인
+                onValue(userRef, (snap) => {
+                    const data = snap.val();
+                    isAdmin = !!data?.isAdmin;
+                    document.getElementById('adminRewardPanel').style.display = isAdmin ? 'block' : 'none';
+                });
+                document.getElementById('authScreen').classList.add('hidden');
+                document.getElementById('rhythmGameSection').classList.remove('hidden');
+            } else {
+                currentUser = null;
+                isAdmin = false;
+                document.getElementById('authScreen').classList.remove('hidden');
+                document.getElementById('rhythmGameSection').classList.add('hidden');
+            }
+        });
+
+        // 회원가입/로그인
+        window.handleAuth = async () => {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            const button = document.getElementById('authButton');
+            const errorDiv = document.getElementById('authError');
+            if (!email || !password) {
+                showError('이메일과 비밀번호를 입력해주세요.');
+                return;
+            }
+            if (password.length < 6) {
+                showError('비밀번호는 최소 6자 이상이어야 합니다.');
+                return;
+            }
+            button.disabled = true;
+            button.textContent = '처리 중...';
+            errorDiv.classList.add('hidden');
+            try {
+                if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+            } catch (error) {
+                let message = '오류가 발생했습니다.';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = '이미 사용 중인 이메일입니다.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = '유효하지 않은 이메일 형식입니다.';
+                } else if (error.code === 'auth/wrong-password') {
+                    message = '비밀번호가 올바르지 않습니다.';
+                } else if (error.code === 'auth/user-not-found') {
+                    message = '존재하지 않는 사용자입니다.';
+                } else if (error.code === 'auth/weak-password') {
+                    message = '비밀번호가 너무 약합니다.';
+                }
+                showError(message);
+                button.disabled = false;
+                button.textContent = isLoginMode ? '로그인' : '회원가입';
+            }
+        };
+        function showError(message) {
+            const errorDiv = document.getElementById('authError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
         }
+        // 인증 모드 전환
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            const button = document.getElementById('authButton');
+            const linkButton = document.querySelector('.text-link');
+            button.textContent = isLoginMode ? '로그인' : '회원가입';
+            linkButton.textContent = isLoginMode
+                ? '계정이 없으신가요? 회원가입'
+                : '이미 계정이 있으신가요? 로그인';
+            document.getElementById('authError').classList.add('hidden');
+        };
 
         // 오디오 분석 버튼 클릭 (샘플)
         document.getElementById('rhythm-analyze-btn').onclick = function () {
@@ -341,6 +440,7 @@
             rhythmStartGame();
         };
 
+        // 게임 클리어 시 보상 지급
         function rhythmStartGame() {
             const notesDiv = document.getElementById('rhythm-notes');
             notesDiv.innerHTML = '';
@@ -349,7 +449,6 @@
             let startTime = Date.now();
             document.getElementById('rhythm-score').innerText = '';
             document.getElementById('rhythm-start-btn').disabled = true;
-
             function spawnNote(time) {
                 const note = document.createElement('div');
                 note.className = 'note';
@@ -379,11 +478,20 @@
                     }
                 };
             }
-
             function nextNote() {
                 if (noteIdx >= rhythmSampleNotes.length) {
                     document.getElementById('rhythm-start-btn').disabled = false;
                     document.getElementById('rhythm-score').innerText += '  게임 끝!';
+                    // 게임 클리어 시 보상 지급
+                    if (currentUser) {
+                        const userRef = ref(database, `users/${currentUser.uid}`);
+                        get(userRef).then(snap => {
+                            const data = snap.val();
+                            const newCurrency = (data?.currency || 0) + 1000;
+                            update(userRef, { currency: newCurrency });
+                            alert('게임 클리어! +1000 보상 지급');
+                        });
+                    }
                     return;
                 }
                 const now = Date.now();
@@ -396,362 +504,44 @@
             }
             nextNote();
         }
-    </script>
 
-    <!-- 메인 게임 화면 -->
-    <div id="mainScreen" class="hidden container">
-        <!-- 헤더 -->
-        <div class="card">
-            <div class="header">
-                <div>
-                    <h2 id="userEmail"></h2>
-                    <span id="adminBadge" class="badge badge-admin hidden">🛡️ 관리자</span>
-                </div>
-                <button class="btn-danger" onclick="logout()">로그아웃</button>
-            </div>
-
-            <div class="currency-display">
-                <div style="opacity: 0.9;">보유 화폐</div>
-                <div class="currency-amount" id="currencyDisplay">0 루프</div>
-            </div>
-        </div>
-
-        <!-- 일 목록 -->
-        <div class="card">
-            <h3>💼 일 목록</h3>
-            <div class="jobs-grid" id="jobsGrid"></div>
-            <div id="workingAlert" class="alert alert-info hidden"></div>
-        </div>
-
-        <!-- 관리자 패널 -->
-        <div id="adminPanel" class="card hidden">
-            <h3>🛡️ 관리자 패널</h3>
-            <div class="admin-panel">
-                <h4 style="margin-bottom: 12px;">전체 사용자 관리</h4>
-                <div id="usersList" class="user-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        // Firebase 설정
-        const firebaseConfig = {
-            apiKey: "AIzaSyDpcOJfXhipqXWYAvDaQpgFSFzq9N5IT5c",
-            authDomain: "testing123-bbda8.firebaseapp.com",
-            databaseURL: "https://testing123-bbda8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "testing123-bbda8",
-            storageBucket: "testing123-bbda8.firebasestorage.app",
-            messagingSenderId: "511649892672",
-            appId: "1:511649892672:web:3f976bd9fc68aefb9852a5",
-            measurementId: "G-3NRXDVKRCR"
-        };
-
-        // Firebase 초기화
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const database = getDatabase(app);
-
-        // 전역 변수
-        let currentUser = null;
-        let isLoginMode = true;
-        let working = null;
-        let currentJobs = [];
-
-        // 화폐 단위 변환
-        function formatCurrency(amount) {
-            const units = [
-                { name: '영', value: 1e21 },
-                { name: '제네시스', value: 1e18 },
-                { name: '핵', value: 1e15 },
-                { name: '천', value: 1e12 },
-                { name: '성', value: 1e9 },
-                { name: '광', value: 1e6 },
-                { name: '사인', value: 1e3 },
-                { name: '루프', value: 1 }
-            ];
-
-            let result = [];
-            let remaining = amount;
-
-            for (let unit of units) {
-                if (remaining >= unit.value) {
-                    const count = Math.floor(remaining / unit.value);
-                    result.push(`${count.toLocaleString()} ${unit.name}`);
-                    remaining %= unit.value;
-                }
-            }
-
-            return result.length > 0 ? result.join(' ') : '0 루프';
-        }
-
-        // 인증 상태 감지
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                const userRef = ref(database, `users/${user.uid}`);
-                const snapshot = await get(userRef);
-
-                if (!snapshot.exists()) {
-                    // 새 사용자 초기화
-                    await set(userRef, {
-                        email: user.email,
-                        currency: 0,
-                        isAdmin: false,
-                        createdAt: Date.now()
-                    });
-                }
-
-                showMainScreen();
-                loadUserData();
-                loadJobs();
-            } else {
-                currentUser = null;
-                document.getElementById('authScreen').classList.remove('hidden');
-                document.getElementById('mainScreen').classList.add('hidden');
-            }
-        });
-
-        // 회원가입/로그인
-        window.handleAuth = async () => {
-            const email = document.getElementById('emailInput').value;
-            const password = document.getElementById('passwordInput').value;
-            const button = document.getElementById('authButton');
-            const errorDiv = document.getElementById('authError');
-
-            if (!email || !password) {
-                showError('이메일과 비밀번호를 입력해주세요.');
+        // 어드민만 사용자 보상 지급
+        document.getElementById('give-reward-btn').onclick = async function () {
+            const email = document.getElementById('reward-user-email').value.trim();
+            const amount = parseInt(document.getElementById('reward-amount').value, 10);
+            const statusDiv = document.getElementById('reward-status');
+            if (!email || isNaN(amount)) {
+                statusDiv.innerText = '이메일과 금액을 입력하세요.';
                 return;
             }
-
-            if (password.length < 6) {
-                showError('비밀번호는 최소 6자 이상이어야 합니다.');
-                return;
-            }
-
-            button.disabled = true;
-            button.textContent = '처리 중...';
-            errorDiv.classList.add('hidden');
-
-            try {
-                if (isLoginMode) {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } else {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                }
-            } catch (error) {
-                let message = '오류가 발생했습니다.';
-                if (error.code === 'auth/email-already-in-use') {
-                    message = '이미 사용 중인 이메일입니다.';
-                } else if (error.code === 'auth/invalid-email') {
-                    message = '유효하지 않은 이메일 형식입니다.';
-                } else if (error.code === 'auth/wrong-password') {
-                    message = '비밀번호가 올바르지 않습니다.';
-                } else if (error.code === 'auth/user-not-found') {
-                    message = '존재하지 않는 사용자입니다.';
-                } else if (error.code === 'auth/weak-password') {
-                    message = '비밀번호가 너무 약합니다.';
-                }
-                showError(message);
-                button.disabled = false;
-                button.textContent = isLoginMode ? '로그인' : '회원가입';
-            }
-        };
-
-        function showError(message) {
-            const errorDiv = document.getElementById('authError');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-        }
-
-        // 인증 모드 전환
-        window.toggleAuthMode = () => {
-            isLoginMode = !isLoginMode;
-            const button = document.getElementById('authButton');
-            const linkButton = document.querySelector('.text-link');
-
-            button.textContent = isLoginMode ? '로그인' : '회원가입';
-            linkButton.textContent = isLoginMode
-                ? '계정이 없으신가요? 회원가입'
-                : '이미 계정이 있으신가요? 로그인';
-
-            document.getElementById('authError').classList.add('hidden');
-        };
-
-        // 메인 화면 표시
-        async function showMainScreen() {
-            document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('mainScreen').classList.remove('hidden');
-            document.getElementById('userEmail').textContent = currentUser.email;
-        }
-
-        // 사용자 데이터 로드
-        async function loadUserData() {
-            const userRef = ref(database, `users/${currentUser.uid}`);
-
-            onValue(userRef, (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    document.getElementById('currencyDisplay').textContent = formatCurrency(data.currency || 0);
-
-                    if (data.isAdmin) {
-                        document.getElementById('adminBadge').classList.remove('hidden');
-                        document.getElementById('adminPanel').classList.remove('hidden');
-                        loadAllUsers();
+            // 이메일로 사용자 찾기
+            const usersRef = ref(database, 'users');
+            const snap = await get(usersRef);
+            let found = false;
+            if (snap.exists()) {
+                const users = snap.val();
+                for (const uid in users) {
+                    if (users[uid].email === email) {
+                        const userRef = ref(database, `users/${uid}`);
+                        const userSnap = await get(userRef);
+                        const userData = userSnap.val();
+                        const newCurrency = (userData?.currency || 0) + amount;
+                        await update(userRef, { currency: newCurrency });
+                        statusDiv.innerText = `지급 완료! (${email} +${amount})`;
+                        found = true;
+                        break;
                     }
                 }
-            });
-        }
-
-        // 일 목록 로드
-        async function loadJobs() {
-            const jobsRef = ref(database, 'jobs');
-
-            onValue(jobsRef, (snapshot) => {
-                const data = snapshot.val();
-                currentJobs = [];
-
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        currentJobs.push({ id: key, ...data[key] });
-                    });
-                } else {
-                    // 기본 일 목록 생성
-                    const defaultJobs = {
-                        easy: { name: '심부름', difficulty: '쉬움', reward: 100, time: 3 },
-                        medium: { name: '배달', difficulty: '보통', reward: 500, time: 5 },
-                        hard: { name: '경비', difficulty: '어려움', reward: 2000, time: 10 },
-                        expert: { name: '해킹', difficulty: '전문가', reward: 10000, time: 20 }
-                    };
-                    set(jobsRef, defaultJobs);
-                }
-
-                renderJobs();
-            });
-        }
-
-        // 일 목록 렌더링
-        function renderJobs() {
-            const grid = document.getElementById('jobsGrid');
-            grid.innerHTML = currentJobs.map(job => `
-                <div class="job-card">
-                    <div class="job-header">
-                        <div>
-                            <h4 style="font-size: 18px; font-weight: 600;">${job.name}</h4>
-                            <p style="color: #718096; font-size: 14px;">${job.difficulty}</p>
-                        </div>
-                        <span class="job-reward">+${job.reward.toLocaleString()} 루프</span>
-                    </div>
-                    <p style="color: #a0aec0; font-size: 14px; margin-bottom: 12px;">⏱️ ${job.time}초 소요</p>
-                    <button 
-                        class="btn-primary" 
-                        onclick="startJob('${job.id}')"
-                        ${working ? 'disabled' : ''}
-                    >
-                        ${working?.id === job.id ? '작업 중...' : '시작하기'}
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        // 일 시작
-        window.startJob = async (jobId) => {
-            const job = currentJobs.find(j => j.id === jobId);
-            if (!job || working) return;
-
-            working = { ...job, startTime: Date.now() };
-
-            const alert = document.getElementById('workingAlert');
-            alert.textContent = `🔄 ${job.name} 진행 중... (${job.time}초 후 완료)`;
-            alert.classList.remove('hidden');
-
-            renderJobs();
-
-            setTimeout(async () => {
-                const userRef = ref(database, `users/${currentUser.uid}`);
-                const snapshot = await get(userRef);
-                const currentCurrency = snapshot.val().currency || 0;
-
-                await update(userRef, {
-                    currency: currentCurrency + job.reward
-                });
-
-                working = null;
-                alert.classList.add('hidden');
-                renderJobs();
-
-                showNotification(`${job.name} 완료! +${job.reward} 루프`);
-            }, job.time * 1000);
+            }
+            if (!found) statusDiv.innerText = '사용자를 찾을 수 없습니다.';
         };
-
-        // 모든 사용자 로드 (관리자용)
-        async function loadAllUsers() {
-            const usersRef = ref(database, 'users');
-
-            onValue(usersRef, (snapshot) => {
-                const data = snapshot.val();
-                const usersList = document.getElementById('usersList');
-
-                if (!data) {
-                    usersList.innerHTML = '<p style="color: #a0aec0;">등록된 사용자가 없습니다.</p>';
-                    return;
-                }
-
-                usersList.innerHTML = Object.keys(data).map(uid => {
-                    const user = data[uid];
-                    return `
-                        <div class="user-item">
-                            <div class="user-info">
-                                <strong>${user.email}</strong>
-                                <p style="color: #718096; font-size: 14px;">${formatCurrency(user.currency || 0)}</p>
-                            </div>
-                            <div class="user-controls">
-                                <button class="btn-secondary btn-small" onclick="modifyCurrency('${uid}', 1000)">+1000</button>
-                                <button class="btn-secondary btn-small" onclick="modifyCurrency('${uid}', -1000)">-1000</button>
-                                ${!user.isAdmin ? `<button class="btn-secondary btn-small" onclick="toggleAdmin('${uid}', true)">관리자로</button>` : ''}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            });
-        }
-
-        // 화폐 수정 (관리자용)
-        window.modifyCurrency = async (uid, amount) => {
-            const userRef = ref(database, `users/${uid}`);
-            const snapshot = await get(userRef);
-            const currentCurrency = snapshot.val().currency || 0;
-            const newCurrency = Math.max(0, currentCurrency + amount);
-
-            await update(userRef, { currency: newCurrency });
-            showNotification(`화폐가 ${amount > 0 ? '+' : ''}${amount} 루프 변경되었습니다.`);
-        };
-
-        // 관리자 권한 토글
-        window.toggleAdmin = async (uid, isAdmin) => {
-            const userRef = ref(database, `users/${uid}`);
-            await update(userRef, { isAdmin });
-            showNotification(`관리자 권한이 ${isAdmin ? '부여' : '제거'}되었습니다.`);
-        };
-
-        // 알림
-        function showNotification(message) {
-            alert(message);
-        }
 
         // 로그아웃
         window.logout = async () => {
             await signOut(auth);
-            document.getElementById('emailInput').value = '';
-            document.getElementById('passwordInput').value = '';
-            document.getElementById('adminBadge').classList.add('hidden');
-            document.getElementById('adminPanel').classList.add('hidden');
         };
     </script>
+
 </body>
 
 </html>

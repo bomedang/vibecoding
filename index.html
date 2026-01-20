@@ -166,6 +166,10 @@ margin-top: -8px; margin-right: -8px; }
         </div>
     </div>
     <script>
+        // 페이지 진입 시 모달 항상 숨김
+        window.onload = function () {
+            document.getElementById('currencyTableModal').style.display = 'none';
+        };
         // 구글 로그인 콜백
         function onGoogleSignIn(response) {
             const credential = response.credential;

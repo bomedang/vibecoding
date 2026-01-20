@@ -391,10 +391,6 @@
                 // 어드민 기능 UI 표시
                 document.getElementById('admin-feature-panel').style.display = isAdmin ? 'block' : 'none';
             }
-            <div id="admin-feature-panel" style="display:none; margin-bottom:12px; text-align:center;">
-                <input id="adminNoticeInput" type="text" placeholder="전체 공지 입력" style="padding:6px 12px; border-radius:6px; border:1px solid #b8c1ec; width:60%;">
-                    <button onclick="window.sendAdminNotice(document.getElementById('adminNoticeInput').value)" style="padding:6px 16px; border-radius:8px; border:none; background:#eebbc3; color:#232946; font-weight:bold; cursor:pointer;">전체공지 전송</button>
-            </div>
         }
 
         // 틱택토 게임 로직

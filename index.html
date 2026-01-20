@@ -259,7 +259,26 @@
         </div>
         <div id="minigame" class="section">
             <h2>미니게임</h2>
-            <p>미니게임 목록 및 실행 예정</p>
+            <div id="minigame-menu" style="margin-bottom:20px; display:flex; gap:12px;">
+                <button onclick="showMiniGame('tictactoe')"
+                    style="padding:8px 18px; border-radius:8px; border:none; background:#eebbc3; color:#232946; font-weight:bold; cursor:pointer;">틱택토</button>
+                <button onclick="showMiniGame('comingsoon')"
+                    style="padding:8px 18px; border-radius:8px; border:none; background:#b8c1ec; color:#232946; font-weight:bold; cursor:pointer;">다른
+                    미니게임</button>
+            </div>
+            <div id="tictactoe-game" style="display:none;">
+                <h3 style="margin-bottom:10px;">틱택토</h3>
+                <div id="tictactoe-board"
+                    style="display:grid; grid-template-columns:repeat(3,60px); grid-gap:8px; justify-content:center; margin-bottom:12px;">
+                </div>
+                <div id="tictactoe-status" style="text-align:center; margin-bottom:10px;"></div>
+                <button id="tictactoe-restart"
+                    style="display:none; margin:0 auto; padding:6px 18px; border-radius:8px; border:none; background:#eebbc3; color:#232946; font-weight:bold; cursor:pointer;">다시하기</button>
+            </div>
+            <div id="comingsoon-game" style="display:none; text-align:center; color:#aaa;">
+                <h3>다른 미니게임</h3>
+                <p>추가 미니게임은 곧 업데이트됩니다!</p>
+            </div>
         </div>
         <div id="chat" class="section">
             <h2>채팅</h2>
@@ -267,6 +286,70 @@
         </div>
     </div>
     <script>
+        // 미니게임 메뉴/틱택토
+        function showMiniGame(name) {
+            document.getElementById('tictactoe-game').style.display = (name === 'tictactoe') ? 'block' : 'none';
+            document.getElementById('comingsoon-game').style.display = (name === 'comingsoon') ? 'block' : 'none';
+            if (name === 'tictactoe') initTicTacToe();
+        }
+
+        // 틱택토 게임 로직
+        let tttBoard, tttTurn, tttOver;
+        function initTicTacToe() {
+            tttBoard = Array(9).fill('');
+            tttTurn = 'X';
+            tttOver = false;
+            renderTicTacToe();
+            document.getElementById('tictactoe-status').innerText = '플레이어 X 차례';
+            document.getElementById('tictactoe-restart').style.display = 'none';
+        }
+        function renderTicTacToe() {
+            const boardDiv = document.getElementById('tictactoe-board');
+            boardDiv.innerHTML = '';
+            tttBoard.forEach((cell, i) => {
+                const btn = document.createElement('button');
+                btn.style.width = '60px';
+                btn.style.height = '60px';
+                btn.style.fontSize = '2em';
+                btn.style.background = '#fff';
+                btn.style.color = '#232946';
+                btn.style.border = '2px solid #b8c1ec';
+                btn.style.borderRadius = '10px';
+                btn.style.cursor = cell || tttOver ? 'default' : 'pointer';
+                btn.innerText = cell;
+                btn.disabled = !!cell || tttOver;
+                btn.onclick = function () { if (!tttOver && !cell) ticTacToeMove(i); };
+                boardDiv.appendChild(btn);
+            });
+        }
+        function ticTacToeMove(idx) {
+            if (tttBoard[idx] || tttOver) return;
+            tttBoard[idx] = tttTurn;
+            renderTicTacToe();
+            if (checkTicTacToeWin(tttTurn)) {
+                document.getElementById('tictactoe-status').innerText = `플레이어 ${tttTurn} 승리!`;
+                tttOver = true;
+                document.getElementById('tictactoe-restart').style.display = 'block';
+                return;
+            }
+            if (tttBoard.every(cell => cell)) {
+                document.getElementById('tictactoe-status').innerText = '무승부!';
+                tttOver = true;
+                document.getElementById('tictactoe-restart').style.display = 'block';
+                return;
+            }
+            tttTurn = tttTurn === 'X' ? 'O' : 'X';
+            document.getElementById('tictactoe-status').innerText = `플레이어 ${tttTurn} 차례`;
+        }
+        function checkTicTacToeWin(turn) {
+            const winIdx = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            return winIdx.some(line => line.every(i => tttBoard[i] === turn));
+        }
+        document.getElementById('tictactoe-restart').onclick = initTicTacToe;
         // 페이지 진입 시 모달 항상 숨김 및 자동로그인 시도
         window.onload = function () {
             document.getElementById('currencyTableModal').style.display = 'none';

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,7 +29,7 @@
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .auth-box {
@@ -36,7 +37,9 @@
             margin: 100px auto;
         }
 
-        h1, h2, h3 {
+        h1,
+        h2,
+        h3 {
             color: #2d3748;
             margin-bottom: 16px;
         }
@@ -261,12 +264,13 @@
         }
     </style>
 </head>
+
 <body>
     <!-- 로그인/회원가입 화면 -->
     <div id="authScreen" class="auth-box card">
         <h1 style="text-align: center;">💰 화폐 게임</h1>
         <p style="text-align: center; color: #718096; margin-bottom: 24px;">일하고 돈을 벌어보세요!</p>
-        
+
         <div class="input-group">
             <label>이메일</label>
             <input type="email" id="emailInput" placeholder="example@email.com">
@@ -279,9 +283,120 @@
 
         <button class="btn-primary" id="authButton" onclick="handleAuth()">로그인</button>
         <button class="text-link" onclick="toggleAuthMode()">계정이 없으신가요? 회원가입</button>
-        
+
         <div id="authError" class="alert alert-error hidden"></div>
     </div>
+    <!-- 리듬게임 섹션 (별도) -->
+    <div id="rhythmGameSection" class="container card" style="margin-top:40px; max-width:600px;">
+        <h2 style="text-align:center;">🎵 리듬게임 (유튜브 오디오 분석)</h2>
+        <!-- 구글 로그인 버튼 -->
+        <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+            data-callback="onRhythmGoogleSignIn" data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin" data-type="standard"></div>
+        <div id="rhythm-user-info" style="display:none; margin-bottom:20px;"></div>
+        <!-- 유튜브 링크 입력 -->
+        <input type="text" id="rhythm-youtube-link" placeholder="유튜브 링크를 입력하세요" style="width:80%;padding:8px;">
+        <button id="rhythm-analyze-btn">오디오 분석</button>
+        <div id="rhythm-analyze-status" style="margin:10px 0;"></div>
+        <!-- 리듬게임 영역 -->
+        <div id="rhythm-game-area" style="display:none;">
+            <div id="rhythm-notes"
+                style="height:300px;background:#111;border-radius:8px;margin-bottom:20px;position:relative;overflow:hidden;">
+            </div>
+            <button id="rhythm-start-btn">게임 시작</button>
+            <div id="rhythm-score" style="margin-top:20px;font-size:20px;"></div>
+        </div>
+    </div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // 구글 로그인 콜백 (리듬게임용)
+        function onRhythmGoogleSignIn(response) {
+            const userInfo = document.getElementById('rhythm-user-info');
+            const credential = response.credential;
+            const payload = JSON.parse(atob(credential.split('.')[1]));
+            userInfo.innerHTML = `<b>${payload.name}</b> (${payload.email})`;
+            userInfo.style.display = 'block';
+            document.querySelector('#rhythmGameSection .g_id_signin').style.display = 'none';
+        }
+
+        // 오디오 분석 버튼 클릭 (샘플)
+        document.getElementById('rhythm-analyze-btn').onclick = function () {
+            const link = document.getElementById('rhythm-youtube-link').value.trim();
+            if (!link) {
+                document.getElementById('rhythm-analyze-status').innerText = '유튜브 링크를 입력하세요.';
+                return;
+            }
+            document.getElementById('rhythm-analyze-status').innerText = '오디오 분석 중... (샘플 데이터 사용)';
+            setTimeout(() => {
+                document.getElementById('rhythm-analyze-status').innerText = '분석 완료! 게임을 시작하세요.';
+                document.getElementById('rhythm-game-area').style.display = 'block';
+            }, 1500);
+        };
+
+        // 샘플 리듬 데이터
+        const rhythmSampleNotes = [500, 1200, 1800, 2500, 3200, 4000, 4700, 5400]; // ms 단위
+
+        document.getElementById('rhythm-start-btn').onclick = function () {
+            rhythmStartGame();
+        };
+
+        function rhythmStartGame() {
+            const notesDiv = document.getElementById('rhythm-notes');
+            notesDiv.innerHTML = '';
+            let score = 0;
+            let noteIdx = 0;
+            let startTime = Date.now();
+            document.getElementById('rhythm-score').innerText = '';
+            document.getElementById('rhythm-start-btn').disabled = true;
+
+            function spawnNote(time) {
+                const note = document.createElement('div');
+                note.className = 'note';
+                note.style.width = '40px';
+                note.style.height = '40px';
+                note.style.background = '#f33';
+                note.style.borderRadius = '50%';
+                note.style.position = 'absolute';
+                note.style.left = '50%';
+                note.style.transform = 'translateX(-50%)';
+                note.style.top = '0px';
+                notesDiv.appendChild(note);
+                let y = 0;
+                const interval = setInterval(() => {
+                    y += 5;
+                    note.style.top = y + 'px';
+                    if (y > 260) {
+                        clearInterval(interval);
+                        notesDiv.removeChild(note);
+                    }
+                }, 16);
+                note.onclick = function () {
+                    if (y > 240 && y < 280) {
+                        score++;
+                        document.getElementById('rhythm-score').innerText = `점수: ${score}`;
+                        note.style.background = '#0f0';
+                    }
+                };
+            }
+
+            function nextNote() {
+                if (noteIdx >= rhythmSampleNotes.length) {
+                    document.getElementById('rhythm-start-btn').disabled = false;
+                    document.getElementById('rhythm-score').innerText += '  게임 끝!';
+                    return;
+                }
+                const now = Date.now();
+                const delay = rhythmSampleNotes[noteIdx] - (now - startTime);
+                setTimeout(() => {
+                    spawnNote(rhythmSampleNotes[noteIdx]);
+                    noteIdx++;
+                    nextNote();
+                }, Math.max(0, delay));
+            }
+            nextNote();
+        }
+    </script>
 
     <!-- 메인 게임 화면 -->
     <div id="mainScreen" class="hidden container">
@@ -380,7 +495,7 @@
                 currentUser = user;
                 const userRef = ref(database, `users/${user.uid}`);
                 const snapshot = await get(userRef);
-                
+
                 if (!snapshot.exists()) {
                     // 새 사용자 초기화
                     await set(userRef, {
@@ -458,12 +573,12 @@
             isLoginMode = !isLoginMode;
             const button = document.getElementById('authButton');
             const linkButton = document.querySelector('.text-link');
-            
+
             button.textContent = isLoginMode ? '로그인' : '회원가입';
-            linkButton.textContent = isLoginMode 
-                ? '계정이 없으신가요? 회원가입' 
+            linkButton.textContent = isLoginMode
+                ? '계정이 없으신가요? 회원가입'
                 : '이미 계정이 있으신가요? 로그인';
-            
+
             document.getElementById('authError').classList.add('hidden');
         };
 
@@ -477,12 +592,12 @@
         // 사용자 데이터 로드
         async function loadUserData() {
             const userRef = ref(database, `users/${currentUser.uid}`);
-            
+
             onValue(userRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
                     document.getElementById('currencyDisplay').textContent = formatCurrency(data.currency || 0);
-                    
+
                     if (data.isAdmin) {
                         document.getElementById('adminBadge').classList.remove('hidden');
                         document.getElementById('adminPanel').classList.remove('hidden');
@@ -495,11 +610,11 @@
         // 일 목록 로드
         async function loadJobs() {
             const jobsRef = ref(database, 'jobs');
-            
+
             onValue(jobsRef, (snapshot) => {
                 const data = snapshot.val();
                 currentJobs = [];
-                
+
                 if (data) {
                     Object.keys(data).forEach(key => {
                         currentJobs.push({ id: key, ...data[key] });
@@ -514,7 +629,7 @@
                     };
                     set(jobsRef, defaultJobs);
                 }
-                
+
                 renderJobs();
             });
         }
@@ -549,7 +664,7 @@
             if (!job || working) return;
 
             working = { ...job, startTime: Date.now() };
-            
+
             const alert = document.getElementById('workingAlert');
             alert.textContent = `🔄 ${job.name} 진행 중... (${job.time}초 후 완료)`;
             alert.classList.remove('hidden');
@@ -560,7 +675,7 @@
                 const userRef = ref(database, `users/${currentUser.uid}`);
                 const snapshot = await get(userRef);
                 const currentCurrency = snapshot.val().currency || 0;
-                
+
                 await update(userRef, {
                     currency: currentCurrency + job.reward
                 });
@@ -568,7 +683,7 @@
                 working = null;
                 alert.classList.add('hidden');
                 renderJobs();
-                
+
                 showNotification(`${job.name} 완료! +${job.reward} 루프`);
             }, job.time * 1000);
         };
@@ -576,16 +691,16 @@
         // 모든 사용자 로드 (관리자용)
         async function loadAllUsers() {
             const usersRef = ref(database, 'users');
-            
+
             onValue(usersRef, (snapshot) => {
                 const data = snapshot.val();
                 const usersList = document.getElementById('usersList');
-                
+
                 if (!data) {
                     usersList.innerHTML = '<p style="color: #a0aec0;">등록된 사용자가 없습니다.</p>';
                     return;
                 }
-                
+
                 usersList.innerHTML = Object.keys(data).map(uid => {
                     const user = data[uid];
                     return `
@@ -611,7 +726,7 @@
             const snapshot = await get(userRef);
             const currentCurrency = snapshot.val().currency || 0;
             const newCurrency = Math.max(0, currentCurrency + amount);
-            
+
             await update(userRef, { currency: newCurrency });
             showNotification(`화폐가 ${amount > 0 ? '+' : ''}${amount} 루프 변경되었습니다.`);
         };
@@ -638,4 +753,5 @@
         };
     </script>
 </body>
+
 </html>

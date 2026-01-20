@@ -63,9 +63,115 @@
         }
 
         .currency {
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 24px 0 0 0;
             font-size: 18px;
+            gap: 8px;
+        }
+
+        .currency-table-btn {
+            background: none;
+            border: none;
+            margin-left: 6px;
+            padding: 4px 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            font-size: 20px;
+            color: #eebbc3;
+        }
+
+        .currency-table-btn:hover {
+            background: #eebbc3;
+            color: #232946;
+        }
+
+        .currency-table-modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .currency-table-content {
+            background: #fff;
+            color: #232946;
+            border-radius: 18px;
+            padding: 36px 32px 28px 32px;
+            min-width: 340px;
+            box-shadow: 0 8px 32px #0004;
+            position: relative;
+            animation: popIn 0.2s;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .currency-table-content h3 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 1.3em;
+            letter-spacing: 1px;
+        }
+
+        .currency-table-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 1em;
+        }
+
+        .currency-table-content th,
+        .currency-table-content td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        .currency-table-content th {
+            background: #eebbc3;
+            color: #232946;
+            font-weight: bold;
+        }
+
+        .currency-table-content tr:last-child td {
+            border-bottom: none;
+        }
+
+        .currency-table-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 26px;
+            color: #232946;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .currency-table-close:hover {
+            color: #eebbc3;
         }
 
         .section {
@@ -87,8 +193,17 @@
         </div>
         <div class="g_id_signin" data-type="standard"></div>
         <div id="user-info" style="display:none;"></div>
-        <div class="currency" id="currencyDisplay" style="display:none;"></div>
-        <button class="currency-table-btn" id="showCurrencyTableBtn" style="display:none;">제화 기준표</button>
+        <div class="currency" id="currencyRow" style="display:none;">
+            <span id="currencyDisplay"></span>
+            <button class="currency-table-btn" id="showCurrencyTableBtn" title="제화 기준표 보기">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12" y2="8" />
+                </svg>
+            </button>
+        </div>
         <div class="currency-table-modal" id="currencyTableModal">
             <div class="currency-table-content">
                 <button class="currency-table-close" id="closeCurrencyTable">×</button>
@@ -164,8 +279,7 @@
             document.getElementById('user-info').style.display = 'block';
             document.querySelector('.g_id_signin').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'flex';
-            document.getElementById('currencyDisplay').style.display = 'block';
-            document.getElementById('showCurrencyTableBtn').style.display = 'inline-block';
+            document.getElementById('currencyRow').style.display = 'flex';
             // 임시: 로그인 시 보유 제화 표시(샘플)
             updateCurrencyDisplay(1234567890123);
             // 제화 기준표 버튼/모달 동작
